@@ -41,7 +41,7 @@ class AppContainer(app: OpenSrsApp) {
             context = app,
             preferences = preferences,
             srsDb = srsDb,
-            appScope = appScope,
+            externalScope = appScope,
         )
     }
 }

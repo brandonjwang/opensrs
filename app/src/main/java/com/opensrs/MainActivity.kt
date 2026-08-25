@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -19,9 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.opensrs.ui.review.ReviewRoute
 import com.opensrs.ui.review.ReviewScreen
-import com.opensrs.ui.settings.SettingsRoute
 import com.opensrs.ui.settings.SettingsScreen
 import com.opensrs.ui.theme.OpenSrsTheme
 

@@ -2,7 +2,6 @@ package com.opensrs.audio
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import com.opensrs.data.local.DialectMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,12 +29,11 @@ class TtsManager(context: Context) {
         val missingVoiceHint: String? = null,
     )
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val appContext = context.applicationContext
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _availability = MutableStateFlow(Availability())
     val availability: StateFlow<Availability> = _availability
-
-    private var engine: TextToSpeech? = null
 
     /**
      * Engines are created lazily and in parallel; each gets its own instance so
@@ -51,18 +49,21 @@ class TtsManager(context: Context) {
     }
 
     private fun initEngine(locale: Locale) {
-        val tts = TextToSpeech(context.applicationContext) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = tts.setLanguage(locale)
-                val ok = result != TextToSpeech.LANG_MISSING_DATA &&
-                    result != TextToSpeech.LANG_NOT_SUPPORTED
-                publishAvailability(locale, ok)
-            } else {
-                publishAvailability(locale, false)
-            }
+        // lateinit lets the init callback reference the engine instance safely;
+        // the callback fires asynchronously on a binder thread.
+        lateinit var engine: TextToSpeech
+        engine = TextToSpeech(appContext) { status ->
+            val ready = status == TextToSpeech.SUCCESS && isLanguageAvailable(engine, locale)
+            publishAvailability(locale, ready)
         }
-        synchronized(engines) { engines[locale] = tts }
+        synchronized(engines) { engines[locale] = engine }
     }
+
+    /** setLanguage doubles as priming; result codes decide availability. */
+    private fun isLanguageAvailable(tts: TextToSpeech, locale: Locale): Boolean =
+        tts.setLanguage(locale).let { code ->
+            code != TextToSpeech.LANG_MISSING_DATA && code != TextToSpeech.LANG_NOT_SUPPORTED
+        }
 
     private fun publishAvailability(locale: Locale, ready: Boolean) {
         scope.launch {
@@ -113,7 +114,6 @@ class TtsManager(context: Context) {
             engines.values.forEach { it.shutdown() }
             engines.clear()
         }
-        engine = null
     }
 
     private fun speak(text: String, locale: Locale) {
@@ -126,14 +126,5 @@ class TtsManager(context: Context) {
     companion object {
         /** Cantonese locale; falls back gracefully when voice missing (see availability). */
         val HONG_KONG_CHINESE: Locale = Locale("zh", "HK")
-
-        /** Optional diagnostics hook for callers wanting per-utterance errors. */
-        fun attachListener(tts: TextToSpeech, onError: (String) -> Unit) {
-            tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) {}
-                override fun onDone(utteranceId: String?) {}
-                override fun onError(utteranceId: String?) = onError(utteranceId ?: "?")
-            })
-        }
     }
 }

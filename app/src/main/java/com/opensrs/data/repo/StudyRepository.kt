@@ -48,9 +48,9 @@ class StudyRepository(
         val statesById = cardDao.dueAmong(candidates.map { it.id }, now)
             .associateBy { it.wordId }
 
-        val newSlots = (newLimit - dueKnown.size).coerceAtLeast(0)
+        val newSlots = (newLimit - dueKnown.count { it.state == CardState.NEW }).coerceAtLeast(0)
         val fresh = candidates.asSequence()
-            .filter { statesById[it.id]?.state ?: CardState.NEW == CardState.NEW }
+            .filter { (statesById[it.id]?.state ?: CardState.NEW) == CardState.NEW }
             .take(newSlots)
             .map { w -> QueueEntry(w.id, statesById[w.id] ?: FlashcardStateEntity(wordId = w.id)) }
             .toList()

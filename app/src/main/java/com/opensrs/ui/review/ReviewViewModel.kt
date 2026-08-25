@@ -16,9 +16,7 @@ import com.opensrs.data.local.UserSettings
 import com.opensrs.data.repo.QueueEntry
 import com.opensrs.data.repo.StudyRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class ReviewUiState(

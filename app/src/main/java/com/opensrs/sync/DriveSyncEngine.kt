@@ -1,7 +1,6 @@
 package com.opensrs.sync
 
 import android.content.Context
-import com.opensrs.data.db.FlashcardDao
 import com.opensrs.data.db.FlashcardStateEntity
 import com.opensrs.data.db.SrsStateDatabase
 import com.opensrs.data.local.PreferencesRepository
@@ -54,15 +53,14 @@ class DriveSyncEngine(
     private val syncMutex = Mutex()
 
     private val service by lazy { DriveService() }
+    private val auth by lazy { DriveAuthManager(context, preferences) }
 
     /** Internal so tests can substitute a fake token source. */
     internal var tokenProvider: suspend () -> String = {
         val email = preferences.driveAccount.first()
             ?: throw IllegalStateException("Not signed in")
-        auth.accessToken(android.accounts.Account(email, ACCOUNT_TYPE))
+        auth.accessToken(DriveAuthManager.accountFor(email))
     }
-
-    private val auth by lazy { DriveAuthManager(context, preferences) }
 
     fun start() {
         externalScope.launch {
@@ -84,16 +82,13 @@ class DriveSyncEngine(
             is SyncResult.Failed -> "Failed: ${result.reason}"
         }
         _status.value = _status.value.copy(running = false, lastMessage = message)
-        if (result is SyncResult.Failed && result.reason.contains("Not signed in")) {
-            // Keep message user-friendly; account row simply absent.
-        }
         result
     }
 
     private suspend fun doSync(): SyncResult = withContext(Dispatchers.IO) {
         val token = try {
             tokenProvider()
-        } catch (e: DriveAuthManager.NeedUserConsent) {
+        } catch (e: DriveAuthManager.ConsentRequired) {
             return@withContext SyncResult.Failed("Re-authentication required")
         } catch (e: IllegalStateException) {
             return@withContext SyncResult.Failed(e.message ?: "Not signed in")
@@ -139,7 +134,11 @@ class DriveSyncEngine(
         val mergedList = merged.values.toList()
 
         if (pulledNewer > 0) {
-            dao.upsertAll(mergedList.filter { m -> localCards.none { it.wordId == m.wordId && it.updatedAt >= m.updatedAt } })
+            dao.upsertAll(
+                mergedList.filter { m ->
+                    localCards.none { it.wordId == m.wordId && it.updatedAt >= m.updatedAt }
+                },
+            )
         }
 
         // -- Push post-merge superset ---------------------------------------------
@@ -175,8 +174,6 @@ class DriveSyncEngine(
     private fun deviceName(): String = android.os.Build.MODEL ?: "android-device"
 
     companion object {
-        const val ACCOUNT_TYPE = "com.google"
-
         /** Anything smaller cannot be a valid gzip payload (magic + footer). */
         const val GZIP_MIN_BYTES = 20
     }

@@ -24,11 +24,11 @@ class SettingsViewModel(
     private val authManager: DriveAuthManager,
     private val syncEngine: DriveSyncEngine,
 ) : ViewModel() {
-
     data class SignInState(
         val inFlight: Boolean = false,
         val error: String? = null,
-        val needsConsentIntent: Intent? = null,
+        /** Launch via ActivityResultLauncher, then call [onConsentResult]. */
+        val consentIntent: android.content.Intent? = null,
     )
 
     val settings: StateFlow<UserSettings?> = preferences.settings
@@ -61,21 +61,20 @@ class SettingsViewModel(
             _signIn.value = SignInState(inFlight = true)
             try {
                 val account = authManager.lastSignedInAccount()
-                if (account != null && authManager.hasDriveAccess()) {
-                    authManager.persistAccount(account)
-                    _signIn.value = SignInState(inFlight = false)
-                    syncNow()
-                } else {
-                    val intent = authManager.signInIntent()
-                    _signIn.value = SignInState(needsConsentIntent = intent)
+                if (account?.email == null) {
+                    _signIn.value = SignInState(consentIntent = authManager.signInIntent())
+                    return@launch
                 }
+                authManager.persistAccount(account)
+                _signIn.value = SignInState(inFlight = false)
+                syncNow()
             } catch (e: Exception) {
                 _signIn.value = SignInState(error = e.message ?: "Sign-in failed")
             }
         }
     }
 
-    /** Feed the ActivityResult from launching [SignInState.needsConsentIntent] here. */
+    /** Feed the ActivityResult from launching the account-picker intent here. */
     fun onConsentResult(data: Intent?) {
         viewModelScope.launch {
             try {

@@ -14,7 +14,7 @@ class SyncWorkerFactory(private val app: OpenSrsApp) : WorkerFactory() {
         params: WorkerParameters,
     ): ListenableWorker? =
         if (workerClassName == SyncWorker::class.java.name) {
-            SyncWorker(context, params, app.container)
+            SyncWorker(context, params)
         } else {
             null
         }

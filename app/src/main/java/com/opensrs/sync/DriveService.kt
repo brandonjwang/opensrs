@@ -33,7 +33,7 @@ class DriveService(
         val meta = org.json.JSONObject()
             .put("name", fileName)
             .put("parents", listOf("appDataFolder"))
-        val body = MultipartBody.Builder(MultipartBody.ALTERNATE)
+        val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
                 "metadata",

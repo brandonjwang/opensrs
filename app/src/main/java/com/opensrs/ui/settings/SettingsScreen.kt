@@ -50,7 +50,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     }
 
     // When the ViewModel emits a one-shot consent intent, launch it exactly once.
-    val consentIntent = signIn.needsConsentIntent
+    val consentIntent = signIn.consentIntent
     androidx.compose.runtime.LaunchedEffect(consentIntent) {
         consentIntent?.let { consentLauncher.launch(it) }
     }

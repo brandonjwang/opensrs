@@ -1,9 +1,12 @@
 package com.opensrs.sync
 
 import android.accounts.Account
+import android.app.PendingIntent
 import android.content.Context
-import com.google.android.gms.auth.GoogleAuthException
-import com.google.android.gms.auth.GoogleAuthUtil
+import android.content.Intent
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -11,112 +14,93 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.opensrs.data.local.PreferencesRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
- * Google identity for the Drive `appDataFolder` scope via Google Play Services'
- * silent-first authorization ([GoogleAuthUtil]).
+ * Google identity for the Drive `appDataFolder` scope.
+ *
+ * Account selection: classic [GoogleSignIn] intent flow (stable, works without a
+ * server client ID). Token minting: Play Services **Authorization API**
+ * (`AuthorizationClient.authorize`) — the supported replacement for the removed
+ * `GoogleAuthUtil.getToken`; it returns a Drive-scoped access token directly,
+ * silently when consent already exists.
  *
  * Flow:
- *  1. [requestAccount]: one-time interactive consent (GoogleSignIn intent) — the UI
- *     layer launches this from Settings and delivers the result back here.
- *  2. [accessToken]: silent token fetch on every sync; Play Services caches and
- *     refreshes automatically while consent holds.
- *
- * No server client ID is needed because we request an OAuth access token, not an
- * ID token for exchange.
+ *  1. [requestAccount]: interactive account picker (UI launches via ActivityResult).
+ *  2. [accessToken]: silent-first; on missing consent returns [ConsentRequired]
+ *     carrying a PendingIntent for the UI to launch, then retry succeeds.
  */
 class DriveAuthManager(
     private val context: Context,
     private val preferences: PreferencesRepository,
 ) {
 
-    /** Options requesting exactly the Drive appdata scope. */
+    private val driveScope = Scope(SCOPE_DRIVE_APPDATA)
+
     private val signInOptions: GoogleSignInOptions =
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestScopes(Scope(DriveAuthManager.DRIVE_APPDATA_SCOPE))
             .requestEmail()
             .build()
 
-    /** The signed-in account, or null when the user hasn't connected yet. */
+    /** Last account chosen in the picker; null before first sign-in. */
     fun lastSignedInAccount(): GoogleSignInAccount? =
         GoogleSignIn.getLastSignedInAccount(context)
 
-    /**
-     * True when a previous consent covers the Drive scope and tokens can be
-     * fetched silently.
-     */
-    fun hasDriveAccess(): Boolean {
-        val acct = lastSignedInAccount() ?: return false
-        return GoogleSignIn.hasPermissions(acct, Scope(DRIVE_APPDATA_SCOPE))
-    }
-
-    /** Intent for the interactive consent flow; launch from an ActivityResultLauncher. */
-    fun signInIntent(): android.content.Intent =
+    /** Intent for the interactive account-picker; launch from an ActivityResultLauncher. */
+    fun signInIntent(): Intent =
         GoogleSignIn.getClient(context, signInOptions).signInIntent
 
-    /** Resolves the account from a completed [signInIntent] result, or throws. */
-    fun resolveConsent(data: android.content.Intent?): GoogleSignInAccount? =
+    /** Resolves the account from a completed [signInIntent] result. */
+    fun resolveConsent(data: Intent?): GoogleSignInAccount? =
         GoogleSignIn.getSignedInAccountFromIntent(data).getResult(ApiException::class.java)
 
     /**
-     * Silent-first authorization. Throws [NeedUserConsent] when Play Services
-     * requires the interactive flow; callers then launch
-     * `GoogleSignIn.getClient(context, signInOptions).signInIntent`.
+     * Silent-first access-token fetch for [account].
+     *
+     * @throws ConsentRequired when the user must approve the Drive scope;
+     * launch [ConsentRequired.pendingIntent] and call again after resolution.
+     * @throws IOException on transport failures.
      */
-    @Throws(NeedUserConsent::class)
     suspend fun accessToken(account: Account): String = withContext(Dispatchers.IO) {
-        try {
-            GoogleAuthUtil.getToken(
-                context,
-                account,
-                "oauth2:$DRIVE_APPDATA_SCOPE",
-            )
-        } catch (e: com.google.android.gms.auth.UserRecoverableAuthException) {
-            // e.intent can be surfaced by the UI for one-tap approval.
-            throw NeedUserConsent(e.intent)
-        } catch (e: IOException) {
-            throw IOException("Network failure fetching Drive token", e)
-        } catch (e: GoogleAuthException) {
-            throw IllegalStateException("Google auth rejected drive.appdata scope", e)
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(driveScope))
+            .setAccount(account)
+            .build()
+
+        val result = suspendCancellableCoroutine { cont ->
+            Identity.getAuthorizationClient(context)
+                .authorize(request)
+                .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
+                .addOnFailureListener { if (cont.isActive) cont.resumeWithException(it) }
         }
+
+        val token = result.accessToken
+        if (!token.isNullOrEmpty()) return@withContext token
+
+        val pi: PendingIntent = result.pendingIntent
+            ?: throw IOException("Drive authorization returned no token and no consent intent")
+        throw ConsentRequired(pi)
     }
 
-    /**
-     * Called with the result of the interactive sign-in / consent flows. Stores the
-     * account name in preferences so workers can resolve it without UI.
-     */
-    suspend fun persistAccount(account: GoogleSignInAccount) {
-        val email = requireNotNull(account.email) { "Sign-in returned no email" }
-        preferences.setSyncMetadata(
-            account = email,
-            lastSyncAt = null,
-            backupUpdatedAt = null,
-        )
-    }
+    /** Carries the PendingIntent the caller must launch to obtain scope consent. */
+    class ConsentRequired(val pendingIntent: PendingIntent) :
+        Exception("Interactive Google consent required")
 
     suspend fun signOut() {
-        GoogleSignIn.getClient(context, signInOptions).signOut().await()
+        runCatching { GoogleSignIn.getClient(context, signInOptions).signOut() }
         preferences.clearAccount()
     }
 
-    /** Carries the Activity-result intent the caller must launch. */
-    class NeedUserConsent(val intent: android.content.Intent) :
-        Exception("Interactive Google consent required")
-
     companion object {
-        const val DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata"
+        const val SCOPE_DRIVE_APPDATA = "https://www.googleapis.com/auth/drive.appdata"
 
-        /** Resolves the stored account for background workers. */
-        fun storedAccount(preferences: PreferencesRepository): kotlinx.coroutines.flow.Flow<String?> =
-            preferences.driveAccount
-
-        private suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T =
-            kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-                addOnSuccessListener { if (cont.isActive) cont.resumeWith(Result.success(it)) }
-                addOnFailureListener { if (cont.isActive) cont.resumeWith(Result.failure(it)) }
-                addOnCanceledListener { if (cont.isActive) cont.cancel() }
-            }
+        /** Convenience for resolving an [Account] from the stored email. */
+        fun accountFor(email: String): Account = Account(email, ACCOUNT_TYPE)
     }
 }
+
+private const val ACCOUNT_TYPE = "com.google"
