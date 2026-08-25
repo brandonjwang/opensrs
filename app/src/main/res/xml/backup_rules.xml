@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!--
+      Exclude the two Room databases from Android auto-backup. The dictionary is a
+      static asset (restorable from the APK) and SRS progress is synced through our
+      own Google Drive appDataFolder payload; mixing both into platform backup would
+      create a second, unversioned restore path that can fight with Drive sync.
+    -->
+    <exclude domain="database" path="words.db" />
+    <exclude domain="database" path="srs_state.db" />
+    <exclude domain="sharedpref" path="openchinese_prefs.xml" />
+</full-backup-content>
