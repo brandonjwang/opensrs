@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,38 +45,29 @@ import kotlinx.coroutines.launch
 fun BrowseScreen(wordDao: WordDao) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<WordEntity>>(emptyList()) }
+    val scope = rememberCoroutineScope()
     var searchJob by remember { mutableStateOf<Job?>(null) }
 
-    fun runSearch(q: String) {
-        searchJob?.cancel()
-        searchJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            delay(250) // debounce
-            results = if (q.isBlank()) {
-                wordDao.topBySpokenFrequency(window = 50, preferCantonese = false, maxLevel = 0)
-            } else {
-                wordDao.search(q.trim())
-            }
-        }
+    // Initial listing; subsequent searches are debounced per keystroke below.
+    LaunchedEffect(Unit) {
+        results = wordDao.topBySpokenFrequency(window = 50, preferCantonese = false, maxLevel = 0)
     }
-
-    LaunchedEffect(Unit) { runSearch("") }
+    LaunchedEffect(query) {
+        if (query.isEmpty()) return@LaunchedEffect
+        delay(250) // debounce
+        results = wordDao.search(query.trim())
+    }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(
             value = query,
-            onValueChange = {
-                query = it
-                runSearch(it)
-            },
+            onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search 汉字 / pinyin / jyutping / English") },
             leadingIcon = { Icon(Icons.Filled.Search, null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = {
-                        query = ""
-                        runSearch("")
-                    }) { Icon(Icons.Filled.Close, "Clear") }
+                    IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, "Clear") }
                 }
             },
             singleLine = true,

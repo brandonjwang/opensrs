@@ -342,7 +342,7 @@ private fun ReviewCard(
                 previews = ui.intervalPreview,
                 onRate = onRate,
                 onUndo = onUndo,
-                canUndo = ui.currentIndex > 0 || ui.sessionDone,
+                canUndo = ui.canUndo,
             )
         }
     }

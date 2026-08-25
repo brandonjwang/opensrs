@@ -20,6 +20,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.ui.Alignment
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,16 +76,32 @@ fun OpenSrsAppUi() {
         bottomBar = {
             NavigationBar {
                 BottomTab(Icons.Filled.Style, "Review", route == Routes.REVIEW) {
-                    if (route != Routes.REVIEW) navController.navigate(Routes.REVIEW) { launchSingleTop = true }
+                    navController.navigate(Routes.REVIEW) {
+                        popUpTo(Routes.REVIEW) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
                 BottomTab(Icons.Filled.MenuBook, "Browse", route == Routes.BROWSE) {
-                    if (route != Routes.BROWSE) navController.navigate(Routes.BROWSE) { launchSingleTop = true }
+                    navController.navigate(Routes.BROWSE) {
+                        popUpTo(Routes.REVIEW) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
                 BottomTab(Icons.Filled.BarChart, "Stats", route == Routes.STATS) {
-                    if (route != Routes.STATS) navController.navigate(Routes.STATS) { launchSingleTop = true }
+                    navController.navigate(Routes.STATS) {
+                        popUpTo(Routes.REVIEW) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
                 BottomTab(Icons.Filled.Settings, "Settings", route == Routes.SETTINGS) {
-                    if (route != Routes.SETTINGS) navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                    navController.navigate(Routes.SETTINGS) {
+                        popUpTo(Routes.REVIEW) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             }
         },
@@ -115,7 +135,12 @@ private fun androidx.compose.foundation.layout.RowScope.BottomTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .weight(1f)
+            .minimumInteractiveComponentSize()
             .clickable(onClick = onClick)
+            .semantics {
+                role = androidx.compose.ui.semantics.Role.Tab
+                this.selected = selected
+            }
             .padding(vertical = 10.dp),
     ) {
         Icon(icon, contentDescription = label, tint = contentColor)

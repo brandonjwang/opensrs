@@ -158,6 +158,7 @@ class DriveSyncEngine(
             preferences.setDialectMode(remotePrefs.dialectMode)
             preferences.setRomanization(remotePrefs.romanization)
             preferences.setAutoPlayTts(remotePrefs.autoPlayTts)
+            preferences.setShowEnglishFirst(remotePrefs.showEnglishFirst)
         }
 
         when {

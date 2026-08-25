@@ -31,6 +31,7 @@ data class ReviewUiState(
     val sessionDone: Boolean = false,
     /** Next-interval labels per rating, e.g. ["<1m","10m","1d","4d"]. */
     val intervalPreview: List<String> = emptyList(),
+    val canUndo: Boolean = false,
 ) {
     val currentWord: WordEntity? get() = queue.getOrNull(currentIndex)?.let { words[it.wordId] }
     val currentState: FlashcardStateEntity? get() = queue.getOrNull(currentIndex)?.state
@@ -55,6 +56,7 @@ class ReviewViewModel(
     }
 
     private suspend fun startSession(settings: UserSettings) {
+        lastAnswer = null
         _ui.value = _ui.value.copy(loading = true)
         val queue = repository.buildSession(
             newLimit = settings.dailyNewLimit,
@@ -91,6 +93,7 @@ class ReviewViewModel(
         viewModelScope.launch {
             repository.answer(state, rating)
             lastAnswer = s.currentIndex to state
+            _ui.value = _ui.value.copy(canUndo = true)
             advance()
         }
     }
@@ -101,7 +104,13 @@ class ReviewViewModel(
         viewModelScope.launch {
             repository.undo(prevState)
             lastAnswer = null
-            _ui.value = _ui.value.copy(currentIndex = idx, revealed = true, sessionDone = false)
+            _ui.value = _ui.value.copy(canUndo = false)
+            _ui.value = _ui.value.copy(
+                currentIndex = idx,
+                revealed = true,
+                sessionDone = false,
+                intervalPreview = repository.previewIntervals(prevState),
+            )
         }
     }
 

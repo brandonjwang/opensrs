@@ -24,11 +24,16 @@ class StatsRepository(
     suspend fun load(): StudyStats = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val dayMs = 86_400_000L
-        // "Today" bucket starts at the current day boundary (local time approximation: UTC).
-        val todayStart = now - (now % dayMs)
+        // "Today" starts at the local midnight (desugared java.time).
+        val todayStart = java.time.LocalDate.now()
+            .atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 
+        // Bucket 0 is open-ended at the bottom so overdue backlog counts toward Today.
         val forecast = (0..6).map { d ->
-            cardDao.dueCountBetween(todayStart + d * dayMs, todayStart + (d + 1) * dayMs)
+            val start = if (d == 0) 0L else todayStart + d * dayMs
+            cardDao.dueCountBetween(start, todayStart + (d + 1) * dayMs)
         }
         StudyStats(
             newCount = wordDao.count(), // NEW cards are implicit; all unseen words count
