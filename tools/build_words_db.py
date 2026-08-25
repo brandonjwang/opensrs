@@ -110,8 +110,9 @@ def effective_sort_key(w: dict) -> tuple:
 def main() -> None:
     root = Path(__file__).resolve().parent.parent
     src = root / "tools" / "corpus" / "words.csv"
-    out_dir = root / "app" / "assets"
+    out_dir = root / "app" / "src" / "main" / "assets"
     out_dir.mkdir(parents=True, exist_ok=True)
+
     dst = out_dir / "words.db"
 
     with open(src, newline="", encoding="utf-8") as f:
