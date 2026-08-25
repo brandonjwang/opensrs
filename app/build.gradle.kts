@@ -53,9 +53,6 @@ android {
     androidResources {
         noCompress += "db"
     }
-    sourceSets {
-        getByName("main").assets.srcDir("$projectDir/assets")
-    }
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
