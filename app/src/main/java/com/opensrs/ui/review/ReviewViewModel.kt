@@ -10,9 +10,11 @@ import com.opensrs.audio.TtsManager
 import com.opensrs.data.db.FlashcardStateEntity
 import com.opensrs.data.db.WordEntity
 import com.opensrs.data.local.DialectMode
+import com.opensrs.data.local.prefersCantonese
 import com.opensrs.data.local.PreferencesRepository
 import com.opensrs.data.local.RomanizationPref
 import com.opensrs.data.local.UserSettings
+import com.opensrs.OpenSrsApp
 import com.opensrs.data.repo.QueueEntry
 import com.opensrs.data.repo.StudyRepository
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -90,6 +90,12 @@ class DriveAuthManager(
     class ConsentRequired(val pendingIntent: PendingIntent) :
         Exception("Interactive Google consent required")
 
+    /** Stores the account email so background workers can mint tokens without UI. */
+    suspend fun persistAccount(account: GoogleSignInAccount) {
+        val email = requireNotNull(account.email) { "Sign-in returned no email" }
+        preferences.setSyncMetadata(account = email, lastSyncAt = null, backupUpdatedAt = null)
+    }
+
     suspend fun signOut() {
         runCatching { GoogleSignIn.getClient(context, signInOptions).signOut() }
         preferences.clearAccount()
