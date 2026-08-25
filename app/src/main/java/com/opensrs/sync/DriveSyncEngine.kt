@@ -1,0 +1,183 @@
+package com.opensrs.sync
+
+import android.content.Context
+import com.opensrs.data.db.FlashcardDao
+import com.opensrs.data.db.FlashcardStateEntity
+import com.opensrs.data.db.SrsStateDatabase
+import com.opensrs.data.local.PreferencesRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import java.io.IOException
+
+/**
+ * Zero-backend sync over Google Drive appDataFolder.
+ *
+ * Payload: [BackupCodec]-encoded `srs_state_backup.json.gz` holding ONLY user SRS
+ * state (cards table) — never the static dictionary.
+ *
+ * Conflict resolution: per-card Last-Write-Wins on `updatedAt`, merged into Room
+ * inside one transaction; the post-merge superset is then pushed so every device
+ * converges.
+ */
+class DriveSyncEngine(
+    private val context: Context,
+    private val preferences: PreferencesRepository,
+    private val srsDb: SrsStateDatabase,
+    private val externalScope: CoroutineScope,
+) {
+
+    sealed class SyncResult {
+        data object Pushed : SyncResult()
+        data object Pulled : SyncResult()
+        data object Merged : SyncResult()
+        data object InSync : SyncResult()
+        data class Failed(val reason: String) : SyncResult()
+    }
+
+    data class SyncStatus(
+        val running: Boolean = false,
+        val lastMessage: String = "Never synced",
+        val lastSyncAt: Long? = null,
+    )
+
+    private val _status = MutableStateFlow(SyncStatus())
+    val status: StateFlow<SyncStatus> = _status
+
+    /** Serializes syncs; a WorkManager run and a manual pull never interleave. */
+    private val syncMutex = Mutex()
+
+    private val service by lazy { DriveService() }
+
+    /** Internal so tests can substitute a fake token source. */
+    internal var tokenProvider: suspend () -> String = {
+        val email = preferences.driveAccount.first()
+            ?: throw IllegalStateException("Not signed in")
+        auth.accessToken(android.accounts.Account(email, ACCOUNT_TYPE))
+    }
+
+    private val auth by lazy { DriveAuthManager(context, preferences) }
+
+    fun start() {
+        externalScope.launch {
+            preferences.lastSyncAt.collect { last ->
+                _status.value = _status.value.copy(lastSyncAt = last)
+            }
+        }
+    }
+
+    /** Full bidirectional sync; see class docs. */
+    suspend fun syncNow(): SyncResult = syncMutex.withLock {
+        _status.value = _status.value.copy(running = true, lastMessage = "Syncing…")
+        val result = runCatching { doSync() }.getOrElse { e ->
+            SyncResult.Failed(e.message ?: e.javaClass.simpleName)
+        }
+        val message = when (result) {
+            is SyncResult.Pushed, is SyncResult.Pulled, is SyncResult.Merged -> "Synced"
+            is SyncResult.InSync -> "Up to date"
+            is SyncResult.Failed -> "Failed: ${result.reason}"
+        }
+        _status.value = _status.value.copy(running = false, lastMessage = message)
+        if (result is SyncResult.Failed && result.reason.contains("Not signed in")) {
+            // Keep message user-friendly; account row simply absent.
+        }
+        result
+    }
+
+    private suspend fun doSync(): SyncResult = withContext(Dispatchers.IO) {
+        val token = try {
+            tokenProvider()
+        } catch (e: DriveAuthManager.NeedUserConsent) {
+            return@withContext SyncResult.Failed("Re-authentication required")
+        } catch (e: IllegalStateException) {
+            return@withContext SyncResult.Failed(e.message ?: "Not signed in")
+        }
+
+        val fileId = service.findOrCreate(token, DriveService.BACKUP_FILE_NAME)
+
+        // -- Pull ---------------------------------------------------------------
+        val remoteBytes = try {
+            service.download(token, fileId)
+        } catch (e: IOException) {
+            ByteArray(0)
+        }
+        val remoteCards = if (remoteBytes.size > GZIP_MIN_BYTES) {
+            runCatching { BackupCodec.decode(remoteBytes).cards }.getOrElse { emptyList() }
+        } else {
+            emptyList()
+        }
+
+        // -- Merge: per-card LWW on updatedAt ------------------------------------
+        val dao = srsDb.cardDao()
+        val localCards = dao.all()
+        var pulledNewer = 0
+        var keptLocal = 0
+        val merged = LinkedHashMap<Long, FlashcardStateEntity>()
+        localCards.forEach { merged[it.wordId] = it }
+
+        for (remote in remoteCards) {
+            val local = merged[remote.wordId]
+            when {
+                local == null -> {
+                    merged[remote.wordId] = remote
+                    pulledNewer++
+                }
+                remote.updatedAt > local.updatedAt -> {
+                    merged[remote.wordId] = remote
+                    pulledNewer++
+                }
+                else -> keptLocal++
+            }
+        }
+
+        val mergedList = merged.values.toList()
+
+        if (pulledNewer > 0) {
+            dao.upsertAll(mergedList.filter { m -> localCards.none { it.wordId == m.wordId && it.updatedAt >= m.updatedAt } })
+        }
+
+        // -- Push post-merge superset ---------------------------------------------
+        push(service, token, fileId, mergedList)
+        recordSuccess()
+
+        when {
+            pulledNewer > 0 && keptLocal == 0 -> SyncResult.Pulled
+            pulledNewer > 0 -> SyncResult.Merged
+            remoteCards.isEmpty() && localCards.isNotEmpty() -> SyncResult.Pushed
+            else -> SyncResult.InSync
+        }
+    }
+
+    private suspend fun push(
+        service: DriveService,
+        token: String,
+        fileId: String,
+        cards: List<FlashcardStateEntity>,
+    ) = withContext(Dispatchers.IO) {
+        val bytes = BackupCodec.encode(cards, deviceName(), System.currentTimeMillis())
+        service.upload(token, fileId, bytes)
+    }
+
+    private suspend fun recordSuccess() {
+        preferences.setSyncMetadata(
+            account = preferences.driveAccount.first() ?: return,
+            lastSyncAt = System.currentTimeMillis(),
+            backupUpdatedAt = System.currentTimeMillis(),
+        )
+    }
+
+    private fun deviceName(): String = android.os.Build.MODEL ?: "android-device"
+
+    companion object {
+        const val ACCOUNT_TYPE = "com.google"
+
+        /** Anything smaller cannot be a valid gzip payload (magic + footer). */
+        const val GZIP_MIN_BYTES = 20
+    }
+}

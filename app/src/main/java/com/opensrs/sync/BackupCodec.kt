@@ -23,8 +23,8 @@ import java.util.zip.GZIPOutputStream
  *   ]
  * }
  *
- * Short keys: the payload is user review history, so it stays small even after
- * years of reviews (~90 bytes/card gzipped). The static dictionary is never here.
+ * Short keys: years of reviews stay small (~90 bytes/card gzipped). The static
+ * dictionary is never part of this payload.
  */
 object BackupCodec {
 
@@ -62,8 +62,8 @@ object BackupCodec {
         val root = JSONObject(json)
         val version = root.optInt("formatVersion", -1)
         require(version == FORMAT_VERSION) { "Unsupported backup formatVersion: $version" }
-        val cards = ArrayList<FlashcardStateEntity>(root.optJSONArray("cards")?.length() ?: 0)
         val arr = root.getJSONArray("cards")
+        val cards = ArrayList<FlashcardStateEntity>(arr.length())
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             cards.add(
@@ -71,8 +71,8 @@ object BackupCodec {
                     wordId = o.getLong("w"),
                     state = runCatching { CardState.valueOf(o.getString("s")) }
                         .getOrDefault(CardState.NEW),
-                    easeFactor = (o.getDouble("e")).toFloat(),
-                    intervalDays = (o.getDouble("i")).toFloat(),
+                    easeFactor = o.getDouble("e").toFloat(),
+                    intervalDays = o.getDouble("i").toFloat(),
                     repetitions = o.getInt("r"),
                     dueAt = o.getLong("d"),
                     updatedAt = o.getLong("u"),
@@ -94,10 +94,10 @@ object BackupCodec {
         val formatVersion: Int,
     )
 
-    private fun gzip(raw: ByteArray): ByteArrayOutputStream {
+    private fun gzip(raw: ByteArray): ByteArray {
         val out = ByteArrayOutputStream(raw.size / 4 + 64)
         GZIPOutputStream(out).use { it.write(raw) }
-        return out
+        return out.toByteArray()
     }
 
     private fun gunzip(data: ByteArray): ByteArray =
