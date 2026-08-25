@@ -7,30 +7,13 @@ import androidx.room.Query
 interface WordDao {
 
     /**
-     * The review queue ordering: spoken-utility first.
-     *
-     * For a Mandarin-primary learner, words ranked in SUBTLEX-CH come before words
-     * only attested in Cantonese corpora; within equally-ranked groups the id keeps
-     * ordering deterministic (the generator assigns ids by ascending rank).
+     * The review queue ordering: spoken-utility first, restricted to words from
+     * HSK bands [maxLevel] and below (0 = all levels).
      */
     @Query(
         """
         SELECT * FROM words
-        ORDER BY
-            CASE WHEN :preferCantonese = 1
-                 THEN COALESCE(cantoneseRank, 1000000 + mandarinRank, 2000000)
-                 ELSE COALESCE(mandarinRank, 1000000 + cantoneseRank, 2000000)
-            END ASC,
-            id ASC
-        LIMIT :limit OFFSET :offset
-        """
-    )
-    suspend fun pageBySpokenFrequency(limit: Int, offset: Long, preferCantonese: Boolean): List<WordEntity>
-
-    /** Deterministic new-card selection window for the daily queue. */
-    @Query(
-        """
-        SELECT * FROM words
+        WHERE :maxLevel = 0 OR hskLevel <= :maxLevel
         ORDER BY
             CASE WHEN :preferCantonese = 1
                  THEN COALESCE(cantoneseRank, 1000000 + mandarinRank, 2000000)
@@ -40,13 +23,16 @@ interface WordDao {
         LIMIT :window
         """
     )
-    suspend fun topBySpokenFrequency(window: Int, preferCantonese: Boolean): List<WordEntity>
+    suspend fun topBySpokenFrequency(window: Int, preferCantonese: Boolean, maxLevel: Int): List<WordEntity>
 
     @Query("SELECT * FROM words WHERE id = :id")
     suspend fun byId(id: Long): WordEntity?
 
     @Query("SELECT COUNT(*) FROM words")
     suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM words WHERE hskLevel > 0 AND (:maxLevel = 0 OR hskLevel <= :maxLevel)")
+    suspend fun countInLevels(maxLevel: Int): Int
 
     @Query(
         """

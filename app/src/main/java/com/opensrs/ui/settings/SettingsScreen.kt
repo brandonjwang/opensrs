@@ -87,6 +87,23 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
 
         HorizontalDivider()
 
+        // -- HSK level ------------------------------------------------------------
+        SectionTitle("Vocabulary scope")
+        Text("HSK level: ${if (settings!!.hskMaxLevel == 0) "All" else "1–${settings!!.hskMaxLevel}"}")
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("All" to 0, "1" to 1, "2" to 2, "3" to 3, "4" to 4, "5" to 5, "6" to 6, "7+" to 7)
+                .forEach { (label, level) ->
+                    val selected = settings!!.hskMaxLevel == level
+                    if (selected) {
+                        Button(onClick = { viewModel.setHskMaxLevel(level) }) { Text(label) }
+                    } else {
+                        OutlinedButton(onClick = { viewModel.setHskMaxLevel(level) }) { Text(label) }
+                    }
+                }
+        }
+
+        HorizontalDivider()
+
         // -- Dialect & audio -------------------------------------------------------
         SectionTitle("Speech")
         LabeledChoiceRow(

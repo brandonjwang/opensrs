@@ -44,6 +44,7 @@ class SettingsViewModel(
 
     fun setDailyNewLimit(v: Int) = viewModelScope.launch { preferences.setDailyNewLimit(v) }
     fun setDailyReviewLimit(v: Int) = viewModelScope.launch { preferences.setDailyReviewLimit(v) }
+    fun setHskMaxLevel(v: Int) = viewModelScope.launch { preferences.setHskMaxLevel(v) }
     fun setDialectMode(m: DialectMode) = viewModelScope.launch { preferences.setDialectMode(m) }
     fun setRomanization(r: RomanizationPref) = viewModelScope.launch { preferences.setRomanization(r) }
     fun setAutoPlayTts(v: Boolean) = viewModelScope.launch { preferences.setAutoPlayTts(v) }
@@ -53,8 +54,8 @@ class SettingsViewModel(
 
     /**
      * Starts Google sign-in. When Play Services already holds consent this
-     * completes silently; otherwise [SignInState.needsConsentIntent] is emitted and
-     * the UI must launch it via `ActivityResultLauncher` then call [onConsentResult].
+     * completes silently; otherwise the account-picker intent is emitted and
+     * the UI must launch it via ActivityResultLauncher then call [onConsentResult].
      */
     fun signIn() {
         viewModelScope.launch {

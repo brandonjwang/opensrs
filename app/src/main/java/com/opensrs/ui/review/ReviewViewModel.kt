@@ -58,6 +58,7 @@ class ReviewViewModel(
             newLimit = settings.dailyNewLimit,
             reviewLimit = settings.dailyReviewLimit,
             preferCantonese = settings.prefersCantonese,
+            hskMaxLevel = settings.hskMaxLevel,
         )
         val words = repository.hydrate(queue.map { it.wordId })
         _ui.value = ReviewUiState(

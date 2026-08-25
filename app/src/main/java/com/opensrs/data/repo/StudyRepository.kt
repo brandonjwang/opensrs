@@ -38,13 +38,14 @@ class StudyRepository(
         newLimit: Int,
         reviewLimit: Int,
         preferCantonese: Boolean,
+        hskMaxLevel: Int = 0,
     ): List<QueueEntry> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val window = newLimit.coerceAtLeast(1) * CANDIDATE_WINDOW_FACTOR + 100
 
         val dueKnown = cardDao.dueKnown(limit = reviewLimit, now = now)
 
-        val candidates = wordDao.topBySpokenFrequency(window, preferCantonese)
+        val candidates = wordDao.topBySpokenFrequency(window, preferCantonese, hskMaxLevel)
         val statesById = cardDao.dueAmong(candidates.map { it.id }, now)
             .associateBy { it.wordId }
 

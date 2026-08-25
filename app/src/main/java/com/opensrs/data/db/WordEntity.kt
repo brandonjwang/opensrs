@@ -22,6 +22,7 @@ import androidx.room.PrimaryKey
         Index("cantoneseRank"),
         Index("simplified"),
         Index("traditional"),
+        Index("hskLevel"),
     ],
 )
 data class WordEntity(
@@ -39,4 +40,6 @@ data class WordEntity(
     val cantoneseRank: Int?,
     /** JSON array of example sentences, each {zh, py, jp, en}. */
     val examplesJson: String,
+    /** Minimum HSK 3.0 band (1-7) whose inclusive list contains this word. */
+    val hskLevel: Int,
 )
