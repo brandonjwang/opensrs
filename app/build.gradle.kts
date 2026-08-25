@@ -82,7 +82,7 @@ dependencies {
     // Google identity + Drive appDataFolder REST (OkHttp) — zero backend
     implementation(libs.play.services.auth)
     implementation(libs.okhttp)
-
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.android)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)

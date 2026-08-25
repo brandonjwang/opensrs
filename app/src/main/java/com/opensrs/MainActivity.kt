@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,8 +62,12 @@ fun OpenSrsAppUi() {
                         }
                     }) {
                         Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings",
+                            imageVector = if (route == Routes.SETTINGS) {
+                                Icons.AutoMirrored.Filled.ArrowBack
+                            } else {
+                                Icons.Filled.Settings
+                            },
+                            contentDescription = if (route == Routes.SETTINGS) "Back" else "Settings",
                         )
                     }
                 },

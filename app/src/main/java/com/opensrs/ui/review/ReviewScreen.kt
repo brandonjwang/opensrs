@@ -1,5 +1,11 @@
 package com.opensrs.ui.review
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -11,15 +17,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.GTranslate
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,10 +49,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.opensrs.data.db.CardState
 import com.opensrs.data.local.DialectMode
 import com.opensrs.data.local.RomanizationPref
 import com.opensrs.srs.SrsScheduler
@@ -50,14 +74,38 @@ fun ReviewScreen(viewModel: ReviewViewModel = viewModel(factory = ReviewViewMode
             onRestart = { viewModel.restartSession() },
         )
 
-        else -> ReviewCard(
-            ui = ui,
-            availabilityHint = availability.missingVoiceHint,
-            onReveal = viewModel::reveal,
-            onRate = viewModel::rate,
-            onToggleDialect = viewModel::toggleDialect,
-            onToggleRomanization = viewModel::toggleRomanization,
-            onReplay = viewModel::replayAudio,
+        else -> Column(Modifier.fillMaxSize()) {
+            SessionProgressBar(
+                total = ui.queue.size,
+                done = ui.currentIndex,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            ReviewCard(
+                ui = ui,
+                availabilityHint = availability.missingVoiceHint,
+                onReveal = viewModel::reveal,
+                onRate = viewModel::rate,
+                onToggleDialect = viewModel::toggleDialect,
+                onToggleRomanization = viewModel::toggleRomanization,
+                onReplay = viewModel::replayAudio,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SessionProgressBar(total: Int, done: Int, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        LinearProgressIndicator(
+            progress = { if (total == 0) 0f else done.toFloat() / total },
+            modifier = Modifier.weight(1f),
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+        Spacer(Modifier.size(12.dp))
+        Text(
+            "$done/$total",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -90,8 +138,15 @@ private fun ReviewCard(
                         when (settings.dialectMode) {
                             DialectMode.MANDARIN -> "普通话"
                             DialectMode.CANTONESE -> "粵語"
-                            DialectMode.DUAL -> "雙語 Dual"
+                            DialectMode.DUAL -> "Dual"
                         },
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.AutoAwesome, null,
+                        modifier = Modifier.size(AssistChipDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 },
             )
@@ -105,8 +160,25 @@ private fun ReviewCard(
                         },
                     )
                 },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.GTranslate, null,
+                        modifier = Modifier.size(AssistChipDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
+                },
             )
-            AssistChip(onClick = onReplay, label = { Text("🔊 Replay") })
+            AssistChip(
+                onClick = onReplay,
+                label = { Text("Play") },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.VolumeUp, null,
+                        modifier = Modifier.size(AssistChipDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.tertiary,
+                    )
+                },
+            )
         }
 
         availabilityHint?.let {
@@ -119,6 +191,7 @@ private fun ReviewCard(
                 .fillMaxWidth()
                 .weight(1f)
                 .padding(vertical = 12.dp)
+                .animateContentSize(animationSpec = tween(200))
                 .pointerInput(ui.revealed) {
                     detectHorizontalDragGestures { change, dragAmount ->
                         change.consume()
@@ -130,66 +203,123 @@ private fun ReviewCard(
                 }
                 .clickable(enabled = !ui.revealed) { onReveal() },
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(24.dp),
+            shape = MaterialTheme.shapes.large,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    word.simplified,
-                    style = MaterialTheme.typography.displayMedium,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    word.traditional,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(24.dp))
-
-                if (!ui.revealed) {
-                    Text(
-                        "Tap to reveal",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                } else {
-                    val primary = when (settings.romanization) {
-                        RomanizationPref.PINYIN -> word.pinyin
-                        RomanizationPref.JYUTPING -> word.jyutping
-                    }
-                    val secondary = when (settings.romanization) {
-                        RomanizationPref.PINYIN -> word.jyutping
-                        RomanizationPref.JYUTPING -> word.pinyin
-                    }
-                    Text(primary, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        secondary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(word.english, style = MaterialTheme.typography.bodyLarge)
-
-                    val freqLabel = buildString {
-                        word.mandarinRank?.let { append("普 #$it") }
-                        word.cantoneseRank?.let {
-                            if (isNotEmpty()) append(" · ")
-                            append("粵 #$it")
+                // State badge, top-start corner.
+                ui.currentState?.let { st ->
+                    if (st.state != CardState.NEW) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (st.state == CardState.LEARNING) {
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            },
+                            modifier = Modifier.align(Alignment.TopStart),
+                        ) {
+                            Text(
+                                if (st.state == CardState.LEARNING) "Learning" else "Review",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (st.state == CardState.LEARNING) {
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                },
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
                         }
                     }
-                    if (freqLabel.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            freqLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
+                }
+                // HSK band badge, top-end corner.
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                ) {
+                    Text(
+                        "HSK ${word.hskLevel}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        word.simplified,
+                        style = MaterialTheme.typography.displayLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        word.traditional,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(24.dp))
+
+                    AnimatedVisibility(
+                        visible = ui.revealed,
+                        enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 4 },
+                        exit = fadeOut(),
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val primary = when (settings.romanization) {
+                                RomanizationPref.PINYIN -> word.pinyin
+                                RomanizationPref.JYUTPING -> word.jyutping
+                            }
+                            val secondary = when (settings.romanization) {
+                                RomanizationPref.PINYIN -> word.jyutping
+                                RomanizationPref.JYUTPING -> word.pinyin
+                            }
+                            Text(primary, style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                secondary,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(word.english, textAlign = TextAlign.Center)
+
+                            val freqLabel = buildString {
+                                word.mandarinRank?.let { append("普 #$it") }
+                                word.cantoneseRank?.let {
+                                    if (isNotEmpty()) append(" · ")
+                                    append("粵 #$it")
+                                }
+                            }
+                            if (freqLabel.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    freqLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = !ui.revealed, exit = fadeOut()) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Filled.TouchApp, null,
+                                tint = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(28.dp),
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Tap to reveal",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
                     }
                 }
             }
@@ -200,30 +330,59 @@ private fun ReviewCard(
             Button(
                 onClick = onReveal,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Show answer") }
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text("Show answer")
+            }
         } else {
-            RatingRow(onRate = onRate)
+            RatingRow(onRate = onRate, currentEase = ui.currentState?.easeFactor)
         }
     }
 }
 
+private data class RatingSpec(
+    val label: String,
+    val icon: ImageVector,
+    val rating: Int,
+    val container: Color,
+    val content: Color,
+)
+
 @Composable
-private fun RatingRow(onRate: (Int) -> Unit) {
+private fun RatingRow(onRate: (Int) -> Unit, currentEase: Float?) {
+    val specs = listOf(
+        RatingSpec("Again", Icons.Filled.ThumbDown, SrsScheduler.RATING_AGAIN,
+            MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer),
+        RatingSpec("Hard", Icons.Filled.Refresh, SrsScheduler.RATING_HARD,
+            MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer),
+        RatingSpec("Good", Icons.Filled.ThumbUp, SrsScheduler.RATING_GOOD,
+            MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer),
+        RatingSpec("Easy", Icons.Filled.FastForward, SrsScheduler.RATING_EASY,
+            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer),
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        listOf(
-            Triple("Again", SrsScheduler.RATING_AGAIN, MaterialTheme.colorScheme.error),
-            Triple("Hard", SrsScheduler.RATING_HARD, MaterialTheme.colorScheme.tertiary),
-            Triple("Good", SrsScheduler.RATING_GOOD, MaterialTheme.colorScheme.primary),
-            Triple("Easy", SrsScheduler.RATING_EASY, Color(0xFF2E7D32)),
-        ).forEach { (label, rating, color) ->
+        specs.forEach { spec ->
             Button(
-                onClick = { onRate(rating) },
-                colors = ButtonDefaults.buttonColors(containerColor = color),
+                onClick = { onRate(spec.rating) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = spec.container,
+                    contentColor = spec.content,
+                ),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.weight(1f),
-            ) { Text(label) }
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 4.dp, vertical = 8.dp,
+                ),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(spec.icon, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.height(2.dp))
+                    Text(spec.label, style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }
@@ -237,8 +396,15 @@ private fun SessionDoneContent(hasCards: Boolean, onRestart: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        Icon(
+            imageVector = if (hasCards) Icons.Outlined.Celebration else Icons.Filled.CheckCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(64.dp),
+        )
+        Spacer(Modifier.height(16.dp))
         Text(
-            if (hasCards) "Session complete! 🎉" else "No cards scheduled.",
+            if (hasCards) "Session complete!" else "No cards scheduled.",
             style = MaterialTheme.typography.titleLarge,
         )
         Spacer(Modifier.height(8.dp))
@@ -248,6 +414,10 @@ private fun SessionDoneContent(hasCards: Boolean, onRestart: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
-        OutlinedButton(onClick = onRestart) { Text("Refresh queue") }
+        OutlinedButton(onClick = onRestart) {
+            Icon(Icons.Filled.Refresh, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(6.dp))
+            Text("Refresh queue")
+        }
     }
 }

@@ -10,22 +10,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -42,7 +52,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     val signIn by viewModel.signIn.collectAsState()
     val context = LocalContext.current
 
-    // Interactive consent launcher for the Google sign-in flow.
     val consentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -70,7 +79,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // -- Study limits ---------------------------------------------------------
-        SectionTitle("Daily limits")
+        SectionTitle(Icons.Filled.Tune, "Daily limits")
         Text("New cards per day: ${settings!!.dailyNewLimit}")
         Slider(
             value = settings!!.dailyNewLimit.toFloat(),
@@ -88,9 +97,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
         HorizontalDivider()
 
         // -- HSK level ------------------------------------------------------------
-        SectionTitle("Vocabulary scope")
-        Text("HSK level: ${if (settings!!.hskMaxLevel == 0) "All" else "1–${settings!!.hskMaxLevel}"}")
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        SectionTitle(Icons.Filled.School, "Vocabulary scope")
+        Text("HSK level: ${if (settings!!.hskMaxLevel == 0) "All bands" else "Bands 1–${settings!!.hskMaxLevel}"}")
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
             listOf("All" to 0, "1" to 1, "2" to 2, "3" to 3, "4" to 4, "5" to 5, "6" to 6, "7+" to 7)
                 .forEach { (label, level) ->
                     val selected = settings!!.hskMaxLevel == level
@@ -105,12 +117,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
         HorizontalDivider()
 
         // -- Dialect & audio -------------------------------------------------------
-        SectionTitle("Speech")
+        SectionTitle(Icons.Filled.GraphicEq, "Speech")
         LabeledChoiceRow(
             label = "Dialect",
             options = listOf(
-                "Mandarin" to (settings!!.dialectMode == DialectMode.MANDARIN),
-                "Cantonese" to (settings!!.dialectMode == DialectMode.CANTONESE),
+                "普通话" to (settings!!.dialectMode == DialectMode.MANDARIN),
+                "粵語" to (settings!!.dialectMode == DialectMode.CANTONESE),
                 "Dual" to (settings!!.dialectMode == DialectMode.DUAL),
             ),
             onSelect = { idx ->
@@ -144,7 +156,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
         HorizontalDivider()
 
         // -- Sync ------------------------------------------------------------------
-        SectionTitle("Google Drive backup")
+        SectionTitle(Icons.Filled.CloudSync, "Google Drive backup")
         account?.let { Text("Account: $it", style = MaterialTheme.typography.bodySmall) }
         Text(
             text = buildString {
@@ -164,7 +176,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
                     enabled = !signIn.inFlight,
                 ) {
                     if (signIn.inFlight) {
-                        CircularProgressIndicator(modifier = Modifier.height(18.dp).fillMaxWidth(0.2f))
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp))
                     } else {
                         Text("Sign in")
                     }
@@ -188,8 +200,16 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+private fun SectionTitle(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            icon, null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    }
 }
 
 @Composable

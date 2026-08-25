@@ -3,8 +3,27 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Stylized 学 glyph placeholder -->
+    <!-- Cinnabar seal background -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,30 C42,30 34,36 34,44 L74,44 C74,36 66,30 54,30 Z M38,48 C36,56 38,64 44,70 C50,76 58,78 66,74 L62,68 C57,71 51,70 47,65 C43,60 42,54 44,48 Z" />
+        android:fillColor="#B3271E"
+        android:pathData="M14,14h80v80h-80z" />
+    <!-- Rounded inner frame -->
+    <path
+        android:strokeColor="#FCF8F2"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"
+        android:pathData="M22,22 h64 v64 h-64 z" />
+    <!-- 学 (study) rendered as bold strokes -->
+    <path
+        android:fillColor="#FCF8F2"
+        android:pathData="
+            M38,32 L54,32 M46,24 L46,32
+            M30,40 L70,40 L70,44 L30,44 Z
+            M34,52 L42,52 C41,58 39,62 36,66 L48,66 C50,60 51,55 51,52 L58,52
+            C57,57 56,62 55,66 L68,66 C71,62 72,58 72,54 L78,54
+            C77,59 75,64 72,66" />
+    <!-- Bottom dot of 学 -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M52,72 m-4,0 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0" />
 </vector>
