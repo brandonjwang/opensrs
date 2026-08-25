@@ -1,4 +1,4 @@
-package com.openchinese.data.db
+package com.opensrs.data.db
 
 import androidx.room.Dao
 import androidx.room.Query

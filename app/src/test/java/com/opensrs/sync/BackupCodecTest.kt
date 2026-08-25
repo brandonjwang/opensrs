@@ -1,7 +1,7 @@
-package com.openchinese.sync
+package com.opensrs.sync
 
-import com.openchinese.data.db.CardState
-import com.openchinese.data.db.FlashcardStateEntity
+import com.opensrs.data.db.CardState
+import com.opensrs.data.db.FlashcardStateEntity
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

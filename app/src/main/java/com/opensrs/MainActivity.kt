@@ -1,4 +1,4 @@
-package com.openchinese
+package com.opensrs
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -19,11 +19,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.openchinese.ui.review.ReviewRoute
-import com.openchinese.ui.review.ReviewScreen
-import com.openchinese.ui.settings.SettingsRoute
-import com.openchinese.ui.settings.SettingsScreen
-import com.openchinese.ui.theme.OpenChineseTheme
+import com.opensrs.ui.review.ReviewRoute
+import com.opensrs.ui.review.ReviewScreen
+import com.opensrs.ui.settings.SettingsRoute
+import com.opensrs.ui.settings.SettingsScreen
+import com.opensrs.ui.theme.OpenSrsTheme
 
 object Routes {
     const val REVIEW = "review"
@@ -35,8 +35,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            OpenChineseTheme {
-                OpenChineseAppUi()
+            OpenSrsTheme {
+                OpenSrsAppUi()
             }
         }
     }
@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OpenChineseAppUi() {
+fun OpenSrsAppUi() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route ?: Routes.REVIEW
@@ -52,7 +52,7 @@ fun OpenChineseAppUi() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (route == Routes.SETTINGS) "Settings" else "Open Chinese") },
+                title = { Text(if (route == Routes.SETTINGS) "Settings" else "Open SRS") },
                 actions = {
                     IconButton(onClick = {
                         if (route == Routes.SETTINGS) {

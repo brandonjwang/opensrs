@@ -1,13 +1,13 @@
-package com.openchinese
+package com.opensrs
 
 import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
-import com.openchinese.sync.SyncWorker
+import com.opensrs.sync.SyncWorker
 
 /** Bridges the manual DI container into WorkManager worker construction. */
-class SyncWorkerFactory(private val app: OpenChineseApp) : WorkerFactory() {
+class SyncWorkerFactory(private val app: OpenSrsApp) : WorkerFactory() {
     override fun createWorker(
         context: Context,
         workerClassName: String,

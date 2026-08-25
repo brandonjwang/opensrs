@@ -1,4 +1,4 @@
-package com.openchinese.data.db
+package com.opensrs.data.db
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -29,7 +29,7 @@ abstract class WordsDatabase : RoomDatabase() {
 /**
  * Mutable per-user SRS progress. One file so the Drive sync payload is exactly
  * this database's contents. Schema changes require a Room migration plus a
- * backup-payload version bump in [com.openchinese.sync.BackupCodec].
+ * backup-payload version bump in [com.opensrs.sync.BackupCodec].
  */
 @Database(
     entities = [FlashcardStateEntity::class],

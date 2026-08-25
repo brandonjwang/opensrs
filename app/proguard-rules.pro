@@ -14,4 +14,4 @@
 -keep class com.google.android.libraries.identity.googleid.** { *; }
 
 # WorkManager workers are instantiated reflectively by name.
--keep class com.openchinese.sync.SyncWorker { *; }
+-keep class com.opensrs.sync.SyncWorker { *; }

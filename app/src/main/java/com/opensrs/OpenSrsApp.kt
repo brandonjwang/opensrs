@@ -1,14 +1,14 @@
-package com.openchinese
+package com.opensrs
 
 import android.app.Application
 import androidx.work.Configuration
-import com.openchinese.audio.TtsManager
-import com.openchinese.data.db.SrsStateDatabase
-import com.openchinese.data.db.WordsDatabase
-import com.openchinese.data.local.PreferencesRepository
-import com.openchinese.data.repo.StudyRepository
-import com.openchinese.srs.SrsScheduler
-import com.openchinese.sync.DriveSyncEngine
+import com.opensrs.audio.TtsManager
+import com.opensrs.data.db.SrsStateDatabase
+import com.opensrs.data.db.WordsDatabase
+import com.opensrs.data.local.PreferencesRepository
+import com.opensrs.data.repo.StudyRepository
+import com.opensrs.srs.SrsScheduler
+import com.opensrs.sync.DriveSyncEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,7 +17,7 @@ import kotlinx.coroutines.SupervisorJob
  * Manual dependency container. Deliberately not Hilt: the dependency graph is small,
  * fully eager-failable at startup, and one file keeps it auditable.
  */
-class AppContainer(app: OpenChineseApp) {
+class AppContainer(app: OpenSrsApp) {
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val wordsDb: WordsDatabase by lazy { WordsDatabase.build(app) }
@@ -46,7 +46,7 @@ class AppContainer(app: OpenChineseApp) {
     }
 }
 
-class OpenChineseApp : Application(), Configuration.Provider {
+class OpenSrsApp : Application(), Configuration.Provider {
 
     lateinit var container: AppContainer
         private set
@@ -57,7 +57,7 @@ class OpenChineseApp : Application(), Configuration.Provider {
     }
 
     /**
-     * Custom WorkerFactory so [com.openchinese.sync.SyncWorker] receives the real
+     * Custom WorkerFactory so [com.opensrs.sync.SyncWorker] receives the real
      * container instead of being reflectively instantiated empty.
      */
     override val workManagerConfiguration: Configuration

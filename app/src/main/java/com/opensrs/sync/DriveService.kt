@@ -1,4 +1,4 @@
-package com.openchinese.sync
+package com.opensrs.sync
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody

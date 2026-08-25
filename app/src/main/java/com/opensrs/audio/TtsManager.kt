@@ -1,9 +1,9 @@
-package com.openchinese.audio
+package com.opensrs.audio
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import com.openchinese.data.local.DialectMode
+import com.opensrs.data.local.DialectMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

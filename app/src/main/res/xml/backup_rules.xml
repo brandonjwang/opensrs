@@ -8,5 +8,5 @@
     -->
     <exclude domain="database" path="words.db" />
     <exclude domain="database" path="srs_state.db" />
-    <exclude domain="sharedpref" path="openchinese_prefs.xml" />
+    <exclude domain="sharedpref" path="opensrs_prefs.xml" />
 </full-backup-content>

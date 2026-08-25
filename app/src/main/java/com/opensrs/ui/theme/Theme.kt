@@ -1,4 +1,4 @@
-package com.openchinese.ui.theme
+package com.opensrs.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +34,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun OpenChineseTheme(
+fun OpenSrsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {

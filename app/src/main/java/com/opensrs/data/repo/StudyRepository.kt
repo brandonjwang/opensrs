@@ -1,11 +1,11 @@
-package com.openchinese.data.repo
+package com.opensrs.data.repo
 
-import com.openchinese.data.db.CardState
-import com.openchinese.data.db.FlashcardDao
-import com.openchinese.data.db.FlashcardStateEntity
-import com.openchinese.data.db.WordDao
-import com.openchinese.data.db.WordEntity
-import com.openchinese.srs.SrsScheduler
+import com.opensrs.data.db.CardState
+import com.opensrs.data.db.FlashcardDao
+import com.opensrs.data.db.FlashcardStateEntity
+import com.opensrs.data.db.WordDao
+import com.opensrs.data.db.WordEntity
+import com.opensrs.srs.SrsScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

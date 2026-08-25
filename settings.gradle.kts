@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OpenChinese"
+rootProject.name = "OpenSrs"
 include(":app")

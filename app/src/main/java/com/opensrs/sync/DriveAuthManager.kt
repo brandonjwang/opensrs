@@ -1,4 +1,4 @@
-package com.openchinese.sync
+package com.opensrs.sync
 
 import android.accounts.Account
 import android.content.Context
@@ -9,7 +9,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
-import com.openchinese.data.local.PreferencesRepository
+import com.opensrs.data.local.PreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException

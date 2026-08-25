@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.openchinese"
+    namespace = "com.opensrs"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.openchinese"
+        applicationId = "com.opensrs"
         minSdk = 29
         targetSdk = 34
         versionCode = 1
