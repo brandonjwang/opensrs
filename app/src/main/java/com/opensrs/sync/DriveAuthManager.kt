@@ -52,6 +52,14 @@ class DriveAuthManager(
         return GoogleSignIn.hasPermissions(acct, Scope(DRIVE_APPDATA_SCOPE))
     }
 
+    /** Intent for the interactive consent flow; launch from an ActivityResultLauncher. */
+    fun signInIntent(): android.content.Intent =
+        GoogleSignIn.getClient(context, signInOptions).signInIntent
+
+    /** Resolves the account from a completed [signInIntent] result, or throws. */
+    fun resolveConsent(data: android.content.Intent?): GoogleSignInAccount? =
+        GoogleSignIn.getSignedInAccountFromIntent(data).getResult(ApiException::class.java)
+
     /**
      * Silent-first authorization. Throws [NeedUserConsent] when Play Services
      * requires the interactive flow; callers then launch

@@ -54,6 +54,8 @@ class OpenSrsApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.syncEngine.start()
+        com.opensrs.sync.SyncWorker.schedule(this)
     }
 
     /**
