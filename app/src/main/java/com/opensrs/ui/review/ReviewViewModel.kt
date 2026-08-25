@@ -29,6 +29,8 @@ data class ReviewUiState(
     val revealed: Boolean = false,
     val settings: UserSettings? = null,
     val sessionDone: Boolean = false,
+    /** Next-interval labels per rating, e.g. ["<1m","10m","1d","4d"]. */
+    val intervalPreview: List<String> = emptyList(),
 ) {
     val currentWord: WordEntity? get() = queue.getOrNull(currentIndex)?.let { words[it.wordId] }
     val currentState: FlashcardStateEntity? get() = queue.getOrNull(currentIndex)?.state
@@ -72,16 +74,34 @@ class ReviewViewModel(
 
     fun reveal() {
         if (_ui.value.revealed || _ui.value.currentWord == null) return
-        _ui.value = _ui.value.copy(revealed = true)
+        _ui.value = _ui.value.copy(
+            revealed = true,
+            intervalPreview = _ui.value.currentState?.let { repository.previewIntervals(it) } ?: emptyList(),
+        )
         autoPlay()
     }
 
+    /** Pre-answer snapshots for one-level undo: (queueIndex, previousState). */
+    private var lastAnswer: Pair<Int, FlashcardStateEntity>? = null
+
     /** Rating buttons: 0=Again 1=Hard 2=Good 3=Easy. */
     fun rate(rating: Int) {
-        val state = _ui.value.currentState ?: return
+        val s = _ui.value
+        val state = s.currentState ?: return
         viewModelScope.launch {
             repository.answer(state, rating)
+            lastAnswer = s.currentIndex to state
             advance()
+        }
+    }
+
+    /** Reverts the most recent answer and steps back to that card. */
+    fun undo() {
+        val (idx, prevState) = lastAnswer ?: return
+        viewModelScope.launch {
+            repository.undo(prevState)
+            lastAnswer = null
+            _ui.value = _ui.value.copy(currentIndex = idx, revealed = true, sessionDone = false)
         }
     }
 

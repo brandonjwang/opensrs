@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material3.AssistChip
@@ -88,6 +89,7 @@ fun ReviewScreen(viewModel: ReviewViewModel = viewModel(factory = ReviewViewMode
                 onToggleDialect = viewModel::toggleDialect,
                 onToggleRomanization = viewModel::toggleRomanization,
                 onReplay = viewModel::replayAudio,
+                onUndo = viewModel::undo,
             )
         }
     }
@@ -119,6 +121,7 @@ private fun ReviewCard(
     onToggleDialect: () -> Unit,
     onToggleRomanization: () -> Unit,
     onReplay: () -> Unit,
+    onUndo: () -> Unit,
 ) {
     val word = ui.currentWord ?: return
     val settings = ui.settings ?: return
@@ -335,7 +338,12 @@ private fun ReviewCard(
                 Text("Show answer")
             }
         } else {
-            RatingRow(onRate = onRate, currentEase = ui.currentState?.easeFactor)
+            RatingRow(
+                previews = ui.intervalPreview,
+                onRate = onRate,
+                onUndo = onUndo,
+                canUndo = ui.currentIndex > 0 || ui.sessionDone,
+            )
         }
     }
 }
@@ -349,7 +357,12 @@ private data class RatingSpec(
 )
 
 @Composable
-private fun RatingRow(onRate: (Int) -> Unit, currentEase: Float?) {
+private fun RatingRow(
+    previews: List<String>,
+    onRate: (Int) -> Unit,
+    onUndo: () -> Unit,
+    canUndo: Boolean,
+) {
     val specs = listOf(
         RatingSpec("Again", Icons.Filled.ThumbDown, SrsScheduler.RATING_AGAIN,
             MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer),
@@ -364,7 +377,7 @@ private fun RatingRow(onRate: (Int) -> Unit, currentEase: Float?) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        specs.forEach { spec ->
+        specs.forEachIndexed { idx, spec ->
             Button(
                 onClick = { onRate(spec.rating) },
                 colors = ButtonDefaults.buttonColors(
@@ -381,9 +394,23 @@ private fun RatingRow(onRate: (Int) -> Unit, currentEase: Float?) {
                     Icon(spec.icon, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.height(2.dp))
                     Text(spec.label, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        previews.getOrElse(idx) { "" },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
                 }
             }
         }
+    }
+    Spacer(Modifier.height(6.dp))
+    OutlinedButton(
+        onClick = onUndo,
+        enabled = canUndo,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(Icons.Filled.Undo, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.size(6.dp))
+        Text("Undo last answer")
     }
 }
 

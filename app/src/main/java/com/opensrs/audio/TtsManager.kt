@@ -53,6 +53,14 @@ class TtsManager(context: Context) {
         // the callback fires asynchronously on a binder thread.
         lateinit var engine: TextToSpeech
         engine = TextToSpeech(appContext) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                engine.setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build(),
+                )
+            }
             val ready = status == TextToSpeech.SUCCESS && isLanguageAvailable(engine, locale)
             publishAvailability(locale, ready)
         }

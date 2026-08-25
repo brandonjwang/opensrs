@@ -56,9 +56,18 @@ class StudyRepository(
             .map { w -> QueueEntry(w.id, statesById[w.id] ?: FlashcardStateEntity(wordId = w.id)) }
             .toList()
 
-        (dueKnown.map { QueueEntry(it.wordId, it) } + fresh)
+        val session = (dueKnown.map { QueueEntry(it.wordId, it) } + fresh)
             .distinctBy { it.wordId }
+        if (session.isNotEmpty()) {
+            return@withContext session
+        }
+
+        // Learn-ahead: nothing due right now, but LEARNING cards come back within
+        // minutes — surface the next ones instead of showing an empty session.
+        cardDao.nextLearning(LEARN_AHEAD_LIMIT, now, now + LEARN_AHEAD_WINDOW_MS)
+            .map { QueueEntry(it.wordId, it) }
     }
+
 
     /** Batched hydration of dictionary rows for queue ids, preserving order in the map values' keys. */
     suspend fun hydrate(ids: List<Long>): Map<Long, WordEntity> = withContext(Dispatchers.IO) {
@@ -69,6 +78,10 @@ class StudyRepository(
         }
     }
 
+    /** Next-interval labels per rating for the answer buttons. */
+    fun previewIntervals(card: FlashcardStateEntity): List<String> = scheduler.previewIntervals(card)
+
+    /** Answers a card and returns the new scheduled state. */
     suspend fun answer(card: FlashcardStateEntity, rating: Int): FlashcardStateEntity =
         withContext(Dispatchers.IO) {
             val next = scheduler.review(card.copy(), rating, System.currentTimeMillis())
@@ -76,9 +89,18 @@ class StudyRepository(
             next
         }
 
-    suspend fun allCards(): List<FlashcardStateEntity> = cardDao.all()
+    /** Restores a card to its pre-answer state (undo). */
+    suspend fun undo(previous: FlashcardStateEntity) = withContext(Dispatchers.IO) {
+        cardDao.upsert(previous)
+    }
 
     companion object {
         private const val CANDIDATE_WINDOW_FACTOR = 5
+
+        /** Max cards surfaced by the learn-ahead fallback. */
+        private const val LEARN_AHEAD_LIMIT = 10
+
+        /** Look 20 minutes into the future for upcoming learning steps. */
+        private const val LEARN_AHEAD_WINDOW_MS = 20 * 60_000L
     }
 }

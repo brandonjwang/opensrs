@@ -39,7 +39,32 @@ class SrsScheduler(
         }
     }
 
-    // -- New cards ------------------------------------------------------------
+    /** Synthetic "now" for previews so they are deterministic. */
+    private val PREVIEW_NOW_MS = 0L
+
+
+    /**
+     * Human-readable preview of the NEXT interval per rating, index = rating,
+     * e.g. ["1m", "10m", "1d", "4d"]. Pure — safe to call during recomposition.
+     */
+    fun previewIntervals(card: FlashcardStateEntity): List<String> =
+        (0..3).map { r ->
+            val next = review(card, r, PREVIEW_NOW_MS)
+            formatInterval(next.dueAt - PREVIEW_NOW_MS)
+        }
+
+    private fun formatInterval(ms: Long): String {
+        val minutes = ms / 60_000f
+        return when {
+            minutes < 60f -> "${minutes.toInt().coerceAtLeast(1)}m"
+            minutes < 24f * 60f -> "${(minutes / 60f).toInt()}h"
+            else -> {
+                val days = minutes / (24f * 60f)
+                if (days < 31f) "${days.toInt()}d"
+                else "${(days / 30.44f).toInt()}mo"
+            }
+        }
+    }
 
     private fun reviewNew(card: FlashcardStateEntity, rating: Int, now: Long): FlashcardStateEntity =
         when (rating) {

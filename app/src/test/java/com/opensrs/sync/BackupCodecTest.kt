@@ -70,4 +70,30 @@ class BackupCodecTest {
         }
         BackupCodec.decode(bos.toByteArray())
     }
+
+    @Test
+    fun `v2 round trip preserves preferences`() {
+        val settings = com.opensrs.data.local.UserSettings(
+            dailyNewLimit = 25, dailyReviewLimit = 200, hskMaxLevel = 4,
+            dialectMode = com.opensrs.data.local.DialectMode.CANTONESE,
+            romanization = com.opensrs.data.local.RomanizationPref.JYUTPING,
+            autoPlayTts = false, showEnglishFirst = true,
+        )
+        val bytes = BackupCodec.encode(cards, "dev", 99L, settings)
+        val decoded = BackupCodec.decode(bytes)
+        val p = decoded.prefs!!
+        assertEquals(25, p.dailyNewLimit)
+        assertEquals(200, p.dailyReviewLimit)
+        assertEquals(4, p.hskMaxLevel)
+        assertEquals(com.opensrs.data.local.DialectMode.CANTONESE, p.dialectMode)
+        assertEquals(com.opensrs.data.local.RomanizationPref.JYUTPING, p.romanization)
+        assertEquals(false, p.autoPlayTts)
+        assertEquals(true, p.showEnglishFirst)
+    }
+
+    @Test
+    fun `encode without prefs decodes to null prefs`() {
+        val bytes = BackupCodec.encode(cards, "dev", 1L)
+        assertEquals(null, BackupCodec.decode(bytes).prefs)
+    }
 }

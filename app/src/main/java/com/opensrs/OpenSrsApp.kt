@@ -34,6 +34,10 @@ class AppContainer(app: OpenSrsApp) {
         StudyRepository(wordDao, cardDao, scheduler)
     }
 
+    val statsRepository: com.opensrs.data.repo.StatsRepository by lazy {
+        com.opensrs.data.repo.StatsRepository(wordDao, cardDao)
+    }
+
     val tts: TtsManager by lazy { TtsManager(app) }
 
     val syncEngine: DriveSyncEngine by lazy {

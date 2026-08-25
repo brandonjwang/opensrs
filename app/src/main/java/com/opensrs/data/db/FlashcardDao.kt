@@ -29,8 +29,41 @@ interface FlashcardDao {
     )
     suspend fun dueKnown(limit: Int, now: Long): List<FlashcardStateEntity>
 
+    /** Learn-ahead: soonest-due LEARNING cards within [now, horizon]. */
+    @Query(
+        """
+        SELECT * FROM cards
+        WHERE state = 'LEARNING' AND dueAt > :now AND dueAt <= :horizon
+        ORDER BY dueAt ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun nextLearning(limit: Int, now: Long, horizon: Long): List<FlashcardStateEntity>
+
     @Query("SELECT COUNT(*) FROM cards WHERE state = 'NEW'")
     fun newCount(): Flow<Int>
+
+    /** Distinct due-day buckets for the next 7 days (forecast chart). */
+    @Query(
+        """
+        SELECT COUNT(*) FROM cards
+        WHERE state != 'NEW' AND dueAt > :dayStart AND dueAt <= :dayEnd
+        """
+    )
+    suspend fun dueCountBetween(dayStart: Long, dayEnd: Long): Int
+
+    @Query("SELECT COUNT(*) FROM cards WHERE state = 'GRADUATED'")
+    suspend fun graduatedCount(): Int
+
+    @Query("SELECT COALESCE(SUM(totalReviews), 0) FROM cards")
+    suspend fun totalReviews(): Int
+
+    @Query("SELECT COALESCE(SUM(lapses), 0) FROM cards")
+    suspend fun totalLapses(): Int
+
+    /** Young vs mature split: interval >= 21 days counts as mature. */
+    @Query("SELECT COUNT(*) FROM cards WHERE state = 'GRADUATED' AND intervalDays >= 21")
+    suspend fun matureCount(): Int
 
     @Query("SELECT COUNT(*) FROM cards WHERE state != 'NEW' AND dueAt <= :now")
     fun dueCount(now: Long): Flow<Int>

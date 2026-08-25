@@ -102,8 +102,13 @@ class DriveSyncEngine(
         } catch (e: IOException) {
             ByteArray(0)
         }
+        var remotePrefs: com.opensrs.data.local.UserSettings? = null
         val remoteCards = if (remoteBytes.size > GZIP_MIN_BYTES) {
-            runCatching { BackupCodec.decode(remoteBytes).cards }.getOrElse { emptyList() }
+            runCatching { BackupCodec.decode(remoteBytes) }
+                .getOrElse { null }
+                ?.also { remotePrefs = it.prefs }
+                ?.cards
+                ?: emptyList()
         } else {
             emptyList()
         }
@@ -142,8 +147,18 @@ class DriveSyncEngine(
         }
 
         // -- Push post-merge superset ---------------------------------------------
-        push(service, token, fileId, mergedList)
+        val localPrefs = preferences.settings.first()
+        push(service, token, fileId, mergedList, localPrefs)
         recordSuccess()
+        // Restore remote preferences only when this device has never synced before.
+        if (remotePrefs != null && localCards.isEmpty() && pulledNewer > 0) {
+            preferences.setDailyNewLimit(remotePrefs.dailyNewLimit)
+            preferences.setDailyReviewLimit(remotePrefs.dailyReviewLimit)
+            preferences.setHskMaxLevel(remotePrefs.hskMaxLevel)
+            preferences.setDialectMode(remotePrefs.dialectMode)
+            preferences.setRomanization(remotePrefs.romanization)
+            preferences.setAutoPlayTts(remotePrefs.autoPlayTts)
+        }
 
         when {
             pulledNewer > 0 && keptLocal == 0 -> SyncResult.Pulled
@@ -158,8 +173,9 @@ class DriveSyncEngine(
         token: String,
         fileId: String,
         cards: List<FlashcardStateEntity>,
+        prefs: com.opensrs.data.local.UserSettings,
     ) = withContext(Dispatchers.IO) {
-        val bytes = BackupCodec.encode(cards, deviceName(), System.currentTimeMillis())
+        val bytes = BackupCodec.encode(cards, deviceName(), System.currentTimeMillis(), prefs)
         service.upload(token, fileId, bytes)
     }
 

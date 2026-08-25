@@ -8,10 +8,9 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
-# Credential Manager / Google ID
--if class androidx.credentials.CredentialManager
--keep class androidx.credentials.playservices.** { *; }
--keep class com.google.android.libraries.identity.googleid.** { *; }
+# GMS Identity/Authorization API is reflection-free but obfuscated builds need
+# the API surface kept for Play Services binding.
+-keep class com.google.android.gms.auth.api.identity.** { *; }
 
 # WorkManager workers are instantiated reflectively by name.
 -keep class com.opensrs.sync.SyncWorker { *; }

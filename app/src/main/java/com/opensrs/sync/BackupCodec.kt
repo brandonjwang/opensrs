@@ -1,5 +1,8 @@
 package com.opensrs.sync
 
+import com.opensrs.data.local.DialectMode
+import com.opensrs.data.local.RomanizationPref
+import com.opensrs.data.local.UserSettings
 import com.opensrs.data.db.CardState
 import com.opensrs.data.db.FlashcardStateEntity
 import org.json.JSONArray
@@ -12,25 +15,28 @@ import java.util.zip.GZIPOutputStream
 /**
  * `srs_state_backup.json.gz` codec.
  *
- * Wire format (version 1):
+ * formatVersion 2 adds the `prefs` object so a restore also restores user settings:
  * {
- *   "formatVersion": 1,
+ *   "formatVersion": 2,
  *   "exportedAt": <epoch ms>,
  *   "deviceName": "...",
- *   "cards": [
- *     {"w":<wordId>,"s":"NEW|LEARNING|GRADUATED","e":2.5,"i":1.0,"r":0,
- *      "d":<epoch ms>,"u":<epoch ms>,"t":<totalReviews>,"l":<lapses>}
- *   ]
+ *   "cards": [ {"w","s","e","i","r","d","u","t","l"} ],
+ *   "prefs": {"dailyNew":10,"dailyReviews":100,"hskMax":3,"dialect":"DUAL",
+ *             "roman":"PINYIN","autoTts":true,"englishFirst":false}
  * }
  *
- * Short keys: years of reviews stay small (~90 bytes/card gzipped). The static
- * dictionary is never part of this payload.
+ * v1 payloads (no prefs) decode fine; prefs simply come back null.
  */
 object BackupCodec {
 
-    const val FORMAT_VERSION = 1
+    const val FORMAT_VERSION = 2
 
-    fun encode(cards: List<FlashcardStateEntity>, deviceName: String, exportedAt: Long): ByteArray {
+    fun encode(
+        cards: List<FlashcardStateEntity>,
+        deviceName: String,
+        exportedAt: Long,
+        prefs: UserSettings? = null,
+    ): ByteArray {
         val root = JSONObject()
         root.put("formatVersion", FORMAT_VERSION)
         root.put("exportedAt", exportedAt)
@@ -53,15 +59,29 @@ object BackupCodec {
         }
         root.put("cards", arr)
 
+        prefs?.let {
+            root.put(
+                "prefs",
+                JSONObject()
+                    .put("dailyNew", it.dailyNewLimit)
+                    .put("dailyReviews", it.dailyReviewLimit)
+                    .put("hskMax", it.hskMaxLevel)
+                    .put("dialect", it.dialectMode.name)
+                    .put("roman", it.romanization.name)
+                    .put("autoTts", it.autoPlayTts)
+                    .put("englishFirst", it.showEnglishFirst),
+            )
+        }
+
         return gzip(root.toString().toByteArray(Charsets.UTF_8))
     }
 
-    /** Returns parsed cards plus the payload timestamp used for Last-Write-Wins. */
+    /** Returns parsed cards, payload timestamp, and optional preferences. */
     fun decode(bytes: ByteArray): DecodedBackup {
         val json = String(gunzip(bytes), Charsets.UTF_8)
         val root = JSONObject(json)
         val version = root.optInt("formatVersion", -1)
-        require(version == FORMAT_VERSION) { "Unsupported backup formatVersion: $version" }
+        require(version in 1..FORMAT_VERSION) { "Unsupported backup formatVersion: $version" }
         val arr = root.getJSONArray("cards")
         val cards = ArrayList<FlashcardStateEntity>(arr.length())
         for (i in 0 until arr.length()) {
@@ -81,10 +101,26 @@ object BackupCodec {
                 ),
             )
         }
+        var prefs: UserSettings? = null
+        if (root.has("prefs")) {
+            runCatching {
+                val p = root.getJSONObject("prefs")
+                prefs = UserSettings(
+                    dailyNewLimit = p.optInt("dailyNew", 10),
+                    dailyReviewLimit = p.optInt("dailyReviews", 100),
+                    hskMaxLevel = p.optInt("hskMax", 3),
+                    dialectMode = enumOr(p.optString("dialect"), DialectMode.DUAL),
+                    romanization = enumOr(p.optString("roman"), RomanizationPref.PINYIN),
+                    autoPlayTts = p.optBoolean("autoTts", true),
+                    showEnglishFirst = p.optBoolean("englishFirst", false),
+                )
+            }
+        }
         return DecodedBackup(
             cards = cards,
             exportedAt = root.getLong("exportedAt"),
             formatVersion = version,
+            prefs = prefs,
         )
     }
 
@@ -92,7 +128,11 @@ object BackupCodec {
         val cards: List<FlashcardStateEntity>,
         val exportedAt: Long,
         val formatVersion: Int,
+        val prefs: UserSettings?,
     )
+
+    private inline fun <reified E : Enum<E>> enumOr(raw: String?, default: E): E =
+        raw?.let { runCatching { enumValueOf<E>(it) }.getOrNull() } ?: default
 
     private fun gzip(raw: ByteArray): ByteArray {
         val out = ByteArrayOutputStream(raw.size / 4 + 64)
