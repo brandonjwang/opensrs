@@ -9,12 +9,21 @@ android {
     namespace = "com.opensrs"
     compileSdk = 35
 
+    // Release versioning: the release workflow sets RELEASE_VERSION from the
+    // pushed git tag (e.g. v0.3.1-alpha -> versionName "0.3.1-alpha"). Local
+    // builds get a dev name; versionCode is the commit count, which only ever
+    // grows on main (history was rewritten once, before any releases existed).
+    val releaseTag: String? = System.getenv("RELEASE_VERSION")
+    val commitCount: Int = providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+    }.standardOutput.asText.get().trim().toInt()
+
     defaultConfig {
         applicationId = "com.opensrs"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = commitCount
+        versionName = releaseTag?.removePrefix("v") ?: "dev-$commitCount"
 
         // Room: export the schema of the *user-state* DB so future migrations can be
         // validated in CI. The pre-populated words DB has no migrations by design.

@@ -1,0 +1,53 @@
+name: Release
+
+# Cuts a GitHub Release with a downloadable APK whenever a v* tag is pushed.
+# Builds are deliberate: nothing runs on ordinary pushes to main.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build + publish APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository (full history, for commit-count versionCode)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@v4
+
+      # Debug-signed on purpose: an unsigned release APK cannot be installed
+      # for sideloading. Swap to assembleRelease + a signing config from
+      # GitHub Secrets when this graduates past alpha / heads to Play.
+      - name: Build APK
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Rename APK with version
+        run: cp app/build/outputs/apk/debug/app-debug.apk "OpenSRS-${GITHUB_REF_NAME}.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Open SRS ${{ github.ref_name }}
+          # Tags containing pre-release markers get flagged automatically.
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          generate_release_notes: true
+          files: OpenSRS-*.apk

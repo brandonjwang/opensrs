@@ -21,6 +21,14 @@ Cantonese, or both.
   uninstall/reinstall restores everything on first sync
 </details>
 
+## Download
+
+Grab the latest APK from [Releases](../../releases) and sideload it
+("install unknown apps" permission). These are **alpha** builds: features move,
+the database may migrate without ceremony. Versioning: every release tag
+`vX.Y.Z-alpha.N` becomes `versionName X.Y.Z-alpha.N`; the in-app version code is
+the commit count, so newer releases always upgrade over older ones.
+
 ## Why not just use Anki?
 
 Anki is great — this app exists because getting it to *do Chinese well* takes
