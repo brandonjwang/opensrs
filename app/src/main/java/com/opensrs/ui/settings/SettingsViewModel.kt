@@ -137,10 +137,19 @@ class SettingsViewModel(
                             )
                             return@launch
                         }
-                        // Real errors keep their diagnosis (10 = DEVELOPER_ERROR,
-                        // usually an unregistered package/SHA-1).
-                        failure = "Google sign-in failed (code ${e.statusCode})"
-                    }
+                        // Real errors keep their diagnosis. Code 10
+                        // (DEVELOPER_ERROR) means Cloud Console still isn't
+                        // aligned with this APK — list the exact requirements
+                        // so the user can fix the console without a redeploy.
+                        failure = when (e.statusCode) {
+                            com.google.android.gms.common.api.CommonStatusCodes.DEVELOPER_ERROR ->
+                                "Google sign-in failed (code ${e.statusCode}): register package " +
+                                    "com.opensrs + SHA-1 68A795721360CEE0FAA2B3ECB3848953787BBFC0 " +
+                                    "as an Android OAuth client in the GCP project that has the " +
+                                    "Drive API enabled and a Testing consent screen listing your account."
+                            else -> "Google sign-in failed (code ${e.statusCode})"
+                        }
+                        }
                 } else {
                     failure = "No account returned"
                 }
