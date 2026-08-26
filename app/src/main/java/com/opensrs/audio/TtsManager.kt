@@ -101,15 +101,8 @@ class TtsManager(context: Context) {
      * @param text word to pronounce (logographic script works for both dialects).
      */
     fun speakWord(text: String, mode: DialectMode) {
-        when (mode) {
-            DialectMode.MANDARIN -> speak(text, Locale.SIMPLIFIED_CHINESE)
-            DialectMode.CANTONESE -> speak(text, HONG_KONG_CHINESE)
-            DialectMode.DUAL -> {
-                // QUEUE mode guarantees sequential playback across utterances.
-                speak(text, Locale.SIMPLIFIED_CHINESE)
-                speak(text, HONG_KONG_CHINESE)
-            }
-        }
+        // DUAL order matters: QUEUE_ADD plays these sequentially, Mandarin first.
+        localesFor(mode).forEach { speak(text, it) }
     }
 
     /** Reveal callback: auto-play hook respecting user preference. */
@@ -143,5 +136,12 @@ class TtsManager(context: Context) {
     companion object {
         /** Cantonese locale; falls back gracefully when voice missing (see availability). */
         val HONG_KONG_CHINESE: Locale = Locale("zh", "HK")
+
+        /** Pure mapping of study mode -> playback locales, in playback order. */
+        internal fun localesFor(mode: DialectMode): List<Locale> = when (mode) {
+            DialectMode.MANDARIN -> listOf(Locale.SIMPLIFIED_CHINESE)
+            DialectMode.CANTONESE -> listOf(HONG_KONG_CHINESE)
+            DialectMode.DUAL -> listOf(Locale.SIMPLIFIED_CHINESE, HONG_KONG_CHINESE)
+        }
     }
 }
