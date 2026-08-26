@@ -49,17 +49,18 @@ class ReviewViewModel(
     val availability = tts.availability
 
     init {
-        // Live settings: display/audio prefs apply instantly on every screen;
-        // scope-affecting changes (limits, HSK window, dialect ordering)
-        // rebuild the queue automatically while the session is untouched,
-        // otherwise they take effect on the next session.
+        // Live settings: every change reflects immediately. Scope-affecting
+        // changes (limits, HSK window, dialect ordering) rebuild the queue on
+        // the spot — already-answered progress is persisted, so a rebuild
+        // just re-derives what's still due. DataStore conflates rapid slider
+        // emissions, and collect suspends during rebuild, so no interleaving.
         viewModelScope.launch {
             preferences.settings.collect { s ->
                 val prev = _ui.value.settings
                 _ui.value = _ui.value.copy(settings = s)
                 when {
                     prev == null -> startSession(s) // first emission
-                    scopeChanged(prev, s) && sessionUntouched() -> startSession(s)
+                    scopeChanged(prev, s) -> startSession(s)
                 }
             }
         }
@@ -71,11 +72,6 @@ class ReviewViewModel(
             old.hskMaxLevel != new.hskMaxLevel ||
             old.hskMinLevel != new.hskMinLevel ||
             old.prefersCantonese != new.prefersCantonese
-
-    /** Nothing answered yet, or the session already ran its course. */
-    private fun sessionUntouched(): Boolean =
-        _ui.value.sessionDone ||
-            (!_ui.value.canUndo && !_ui.value.revealed && _ui.value.currentIndex == 0)
 
     private suspend fun startSession(settings: UserSettings) {
         lastAnswer = null
