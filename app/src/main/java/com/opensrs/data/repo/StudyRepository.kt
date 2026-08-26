@@ -39,13 +39,18 @@ class StudyRepository(
         reviewLimit: Int,
         preferCantonese: Boolean,
         hskMaxLevel: Int = 0,
+        hskMinLevel: Int = 0,
     ): List<QueueEntry> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val window = newLimit.coerceAtLeast(1) * CANDIDATE_WINDOW_FACTOR + 100
 
         val dueKnown = cardDao.dueKnown(limit = reviewLimit, now = now)
 
-        val candidates = wordDao.topBySpokenFrequency(window, preferCantonese, hskMaxLevel)
+        // Words marked known never resurface — not as due, not as new.
+        val skipped = cardDao.skippedIds().toHashSet()
+        val candidates = wordDao
+            .topBySpokenFrequency(window, preferCantonese, hskMaxLevel, hskMinLevel)
+            .filter { it.id !in skipped }
         val statesById = cardDao.dueAmong(candidates.map { it.id }, now)
             .associateBy { it.wordId }
 
@@ -92,6 +97,16 @@ class StudyRepository(
     /** Restores a card to its pre-answer state (undo). */
     suspend fun undo(previous: FlashcardStateEntity) = withContext(Dispatchers.IO) {
         cardDao.upsert(previous)
+    }
+
+    /** Permanently marks a word as already known; excluded from all future queues. */
+    suspend fun markKnown(card: FlashcardStateEntity) = withContext(Dispatchers.IO) {
+        cardDao.upsert(
+            card.copy(
+                state = CardState.SUSPENDED,
+                updatedAt = System.currentTimeMillis(),
+            ),
+        )
     }
 
     companion object {

@@ -57,6 +57,15 @@ class SettingsViewModel(
     /** Manual "Sync now" button. */
     fun syncNow() = viewModelScope.launch { syncEngine.syncNow() }
 
+    /** Start band; keeps the window valid by raising max when min exceeds it. */
+    fun setHskMinLevel(v: Int) = viewModelScope.launch {
+        val s = preferences.settingsSnapshot()
+        val min = v.coerceIn(0, 7)
+        preferences.setHskMinLevel(min)
+        if (s.hskMaxLevel in 1 until min) {
+            preferences.setHskMaxLevel(min)
+        }
+    }
     /**
      * Starts Google sign-in. When Play Services already holds consent this
      * completes silently; otherwise the account-picker intent is emitted and
@@ -86,9 +95,20 @@ class SettingsViewModel(
      * Result of whichever interactive Google flow was launched:
      * the account picker ([androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult])
      * or the Drive-scope approval dialog (…StartIntentSenderForResult, data is null there).
-     * Either way, the next step is a fresh [syncNow] attempt.
+     * A cancellation must NOT retry — otherwise a dismissed approval dialog
+     * re-launches itself forever.
      */
-    fun onConsentResult(data: Intent?) {
+    fun onConsentResult(data: Intent?, approved: Boolean = true) {
+        if (!approved) {
+            syncEngine.dismissConsent()
+            viewModelScope.launch {
+                val hadAccount = preferences.driveAccount.first() != null
+                _signIn.value = SignInState(
+                    error = if (hadAccount) DriveSyncEngine.CONSENT_MSG else "Sign-in canceled",
+                )
+            }
+            return
+        }
         viewModelScope.launch {
             try {
                 var email: String? = null

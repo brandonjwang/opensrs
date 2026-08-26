@@ -63,6 +63,7 @@ class ReviewViewModel(
             reviewLimit = settings.dailyReviewLimit,
             preferCantonese = settings.prefersCantonese,
             hskMaxLevel = settings.hskMaxLevel,
+            hskMinLevel = settings.hskMinLevel,
         )
         val words = repository.hydrate(queue.map { it.wordId })
         _ui.value = ReviewUiState(
@@ -94,6 +95,15 @@ class ReviewViewModel(
             repository.answer(state, rating)
             lastAnswer = s.currentIndex to state
             _ui.value = _ui.value.copy(canUndo = true)
+            advance()
+        }
+    }
+
+    /** Permanently marks the current word as known and moves on. Not undoable. */
+    fun markKnown() {
+        val state = _ui.value.currentState ?: return
+        viewModelScope.launch {
+            repository.markKnown(state)
             advance()
         }
     }

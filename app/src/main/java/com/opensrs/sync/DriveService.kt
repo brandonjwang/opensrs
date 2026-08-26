@@ -5,6 +5,8 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
 
 /**
@@ -21,7 +23,10 @@ import java.io.IOException
  */
 class DriveService(
     private val http: OkHttpClient = OkHttpClient(),
+    /** Overridable so tests can point at a MockWebServer. */
+    private val baseUrl: String = BASE,
 ) {
+
 
     /**
      * Finds [fileName] in appDataFolder, creating an empty shell on first run.
@@ -30,9 +35,9 @@ class DriveService(
     fun findOrCreate(accessToken: String, fileName: String): String {
         findFileId(accessToken, fileName)?.let { return it }
 
-        val meta = org.json.JSONObject()
+        val meta = JSONObject()
             .put("name", fileName)
-            .put("parents", listOf("appDataFolder"))
+            .put("parents", JSONArray().put("appDataFolder"))
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
@@ -48,17 +53,18 @@ class DriveService(
             .build()
 
         val req = Request.Builder()
-            .url("$BASE/upload/drive/v3/files?uploadType=multipart&fields=id")
+            .url("$baseUrl/upload/drive/v3/files?uploadType=multipart&fields=id")
             .header("Authorization", "Bearer $accessToken")
             .post(body)
             .build()
-        return parseField(execute(req), "id")
+        // Drive returns compact JSON (no spaces); string-prefix hacks never matched it.
+        return JSONObject(execute(req)).getString("id")
     }
 
     /** Replaces the content of an existing appDataFolder file. */
     fun upload(accessToken: String, fileId: String, bytes: ByteArray) {
         val req = Request.Builder()
-            .url("$BASE/upload/drive/v3/files/$fileId?uploadType=media")
+            .url("$baseUrl/upload/drive/v3/files/$fileId?uploadType=media")
             .header("Authorization", "Bearer $accessToken")
             .patch(bytes.toRequestBody("application/gzip".toMediaType()))
             .build()
@@ -68,36 +74,23 @@ class DriveService(
     /** Downloads the current backup payload. */
     fun download(accessToken: String, fileId: String): ByteArray {
         val req = Request.Builder()
-            .url("$BASE/drive/v3/files/$fileId?alt=media")
+            .url("$baseUrl/drive/v3/files/$fileId?alt=media")
             .header("Authorization", "Bearer $accessToken")
             .get()
             .build()
         return executeBytes(req)
     }
 
-    /** Metadata poll for remote-modified time; used by pull-to-refresh freshness checks. */
-    fun modifiedTime(accessToken: String, fileId: String): Long {
-        val req = Request.Builder()
-            .url("$BASE/drive/v3/files/$fileId?fields=modifiedTime")
-            .header("Authorization", "Bearer $accessToken")
-            .get()
-            .build()
-        val json = execute(req)
-        val raw = parseField(json, "modifiedTime")
-        return RFC3339.parse(raw) as Long // RFC3339 e.g. 2026-01-31T12:34:56.789Z
-    }
-
     private fun findFileId(accessToken: String, name: String): String? {
         val q = java.net.URLEncoder.encode("name = '$name' and trashed = false", "UTF-8")
         val req = Request.Builder()
-            .url("$BASE/drive/v3/files?q=$q&spaces=appDataFolder&fields=files(id,name)")
+            .url("$baseUrl/drive/v3/files?q=$q&spaces=appDataFolder&fields=files(id,name)")
             .header("Authorization", "Bearer $accessToken")
             .get()
             .build()
-        val json = execute(req)
-        val filesJson = json.substringAfter("\"files\": [", "").substringBefore("]")
-        val id = filesJson.substringAfter("\"id\": \"", "").substringBefore("\"")
-        return id.ifEmpty { null }
+        val files = JSONObject(execute(req)).optJSONArray("files") ?: return null
+        if (files.length() == 0) return null
+        return files.getJSONObject(0).getString("id")
     }
 
     private fun execute(req: Request): String = String(executeBytes(req))
@@ -110,17 +103,8 @@ class DriveService(
         }
     }
 
-    private fun parseField(json: String, field: String): String =
-        json.substringAfter("\"$field\": \"").substringBefore("\"")
-
     companion object {
         const val BASE = "https://www.googleapis.com"
         const val BACKUP_FILE_NAME = "srs_state_backup.json.gz"
-
-        /** RFC3339 UTC timestamps from Drive metadata. */
-        private val RFC3339 =
-            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
-                timeZone = java.util.TimeZone.getTimeZone("UTC")
-            }
     }
 }

@@ -114,10 +114,12 @@ class DriveSyncEngine(
         val fileId = service.findOrCreate(token, DriveService.BACKUP_FILE_NAME)
 
         // -- Pull ---------------------------------------------------------------
+        // A failed pull must abort the sync: pushing local-only state over a
+        // healthy remote backup would silently destroy the other device's data.
         val remoteBytes = try {
             service.download(token, fileId)
         } catch (e: IOException) {
-            ByteArray(0)
+            return@withContext SyncResult.Failed("Download failed: ${e.message}")
         }
         var remotePrefs: com.opensrs.data.local.UserSettings? = null
         val remoteCards = if (remoteBytes.size > GZIP_MIN_BYTES) {
@@ -175,6 +177,7 @@ class DriveSyncEngine(
             preferences.setDialectMode(remotePrefs.dialectMode)
             preferences.setRomanization(remotePrefs.romanization)
             preferences.setAutoPlayTts(remotePrefs.autoPlayTts)
+            preferences.setHskMinLevel(remotePrefs.hskMinLevel)
             preferences.setShowEnglishFirst(remotePrefs.showEnglishFirst)
         }
 

@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /** SM-2 card lifecycle states. */
-enum class CardState { NEW, LEARNING, GRADUATED }
+enum class CardState { NEW, LEARNING, GRADUATED, SUSPENDED }
 
 /**
  * Per-user SRS progress for one word. Lives in its own database file

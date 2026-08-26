@@ -36,6 +36,7 @@ class SrsScheduler(
             CardState.NEW -> reviewNew(card, rating, nowMs)
             CardState.LEARNING -> reviewLearning(card, rating, nowMs)
             CardState.GRADUATED -> reviewGraduated(card, rating, nowMs)
+            CardState.SUSPENDED -> error("Suspended cards are never reviewed")
         }
     }
 

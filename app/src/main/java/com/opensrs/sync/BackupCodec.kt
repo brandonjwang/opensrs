@@ -21,8 +21,8 @@ import java.util.zip.GZIPOutputStream
  *   "exportedAt": <epoch ms>,
  *   "deviceName": "...",
  *   "cards": [ {"w","s","e","i","r","d","u","t","l"} ],
- *   "prefs": {"dailyNew":10,"dailyReviews":100,"hskMax":3,"dialect":"DUAL",
- *             "roman":"PINYIN","autoTts":true,"englishFirst":false}
+ *   "prefs": {"dailyNew":10,"dailyReviews":100,"hskMax":3,"hskMin":0,
+ *             "dialect":"DUAL","roman":"PINYIN","autoTts":true,"englishFirst":false}
  * }
  *
  * v1 payloads (no prefs) decode fine; prefs simply come back null.
@@ -66,6 +66,7 @@ object BackupCodec {
                     .put("dailyNew", it.dailyNewLimit)
                     .put("dailyReviews", it.dailyReviewLimit)
                     .put("hskMax", it.hskMaxLevel)
+                    .put("hskMin", it.hskMinLevel)
                     .put("dialect", it.dialectMode.name)
                     .put("roman", it.romanization.name)
                     .put("autoTts", it.autoPlayTts)
@@ -109,6 +110,7 @@ object BackupCodec {
                     dailyNewLimit = p.optInt("dailyNew", 10),
                     dailyReviewLimit = p.optInt("dailyReviews", 100),
                     hskMaxLevel = p.optInt("hskMax", 3),
+                    hskMinLevel = p.optInt("hskMin", 0),
                     dialectMode = enumOr(p.optString("dialect"), DialectMode.DUAL),
                     romanization = enumOr(p.optString("roman"), RomanizationPref.PINYIN),
                     autoPlayTts = p.optBoolean("autoTts", true),

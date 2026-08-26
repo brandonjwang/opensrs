@@ -65,7 +65,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     val intentSenderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
-        viewModel.onConsentResult(result.data)
+        viewModel.onConsentResult(result.data, result.resultCode == android.app.Activity.RESULT_OK)
     }
 
     // When the ViewModel emits a one-shot consent intent, launch it exactly once.
@@ -127,6 +127,22 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
                         Button(onClick = { viewModel.setHskMaxLevel(level) }) { Text(label) }
                     } else {
                         OutlinedButton(onClick = { viewModel.setHskMaxLevel(level) }) { Text(label) }
+                    }
+                }
+        }
+        val minLabel = if (settings!!.hskMinLevel == 0) "All" else "Band ${settings!!.hskMinLevel}"
+        Text("Start from: $minLabel", style = MaterialTheme.typography.bodySmall)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            listOf("All" to 0, "1" to 1, "2" to 2, "3" to 3, "4" to 4, "5" to 5, "6" to 6, "7" to 7)
+                .forEach { (label, level) ->
+                    val selected = settings!!.hskMinLevel == level
+                    if (selected) {
+                        Button(onClick = { viewModel.setHskMinLevel(level) }) { Text(label) }
+                    } else {
+                        OutlinedButton(onClick = { viewModel.setHskMinLevel(level) }) { Text(label) }
                     }
                 }
         }

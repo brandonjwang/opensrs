@@ -90,6 +90,7 @@ fun ReviewScreen(viewModel: ReviewViewModel = viewModel(factory = ReviewViewMode
                 onToggleRomanization = viewModel::toggleRomanization,
                 onReplay = viewModel::replayAudio,
                 onUndo = viewModel::undo,
+                onMarkKnown = viewModel::markKnown,
             )
         }
     }
@@ -122,6 +123,7 @@ private fun ReviewCard(
     onToggleRomanization: () -> Unit,
     onReplay: () -> Unit,
     onUndo: () -> Unit,
+    onMarkKnown: () -> Unit,
 ) {
     val word = ui.currentWord ?: return
     val settings = ui.settings ?: return
@@ -339,12 +341,21 @@ private fun ReviewCard(
             ) {
                 Text("Show answer")
             }
+
         } else {
             RatingRow(
                 previews = ui.intervalPreview,
                 onRate = onRate,
                 onUndo = onUndo,
                 canUndo = ui.canUndo,
+            )
+        }
+
+        // -- Skip ------------------------------------------------------------------
+        androidx.compose.material3.TextButton(onClick = onMarkKnown) {
+            Text(
+                "I already know this word",
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }

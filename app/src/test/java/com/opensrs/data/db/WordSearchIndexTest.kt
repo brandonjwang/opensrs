@@ -35,7 +35,7 @@ class WordSearchIndexTest {
 
     /** Stub of WordDao: only [allForSearch] is used by the index builder. */
     private open class StubDao(private val rows: List<WordEntity>) : WordDao {
-        override suspend fun topBySpokenFrequency(window: Int, preferCantonese: Boolean, maxLevel: Int) = rows.take(window)
+        override suspend fun topBySpokenFrequency(window: Int, preferCantonese: Boolean, maxLevel: Int, minLevel: Int) = rows.take(window)
         override suspend fun byId(id: Long): WordEntity? = rows.firstOrNull { it.id == id }
         override suspend fun count() = rows.size
         override suspend fun countInLevels(maxLevel: Int) = rows.size

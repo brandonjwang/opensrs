@@ -8,12 +8,13 @@ interface WordDao {
 
     /**
      * The review queue ordering: spoken-utility first, restricted to words from
-     * HSK bands [maxLevel] and below (0 = all levels).
+     * HSK bands [minLevel]..[maxLevel] (0 = unbounded on that side).
      */
     @Query(
         """
         SELECT * FROM words
-        WHERE :maxLevel = 0 OR hskLevel <= :maxLevel
+        WHERE (:maxLevel = 0 OR hskLevel <= :maxLevel)
+          AND hskLevel >= :minLevel
         ORDER BY
             CASE WHEN :preferCantonese = 1
                  THEN COALESCE(cantoneseRank, 1000000 + mandarinRank, 2000000)
@@ -23,7 +24,7 @@ interface WordDao {
         LIMIT :window
         """
     )
-    suspend fun topBySpokenFrequency(window: Int, preferCantonese: Boolean, maxLevel: Int): List<WordEntity>
+    suspend fun topBySpokenFrequency(window: Int, preferCantonese: Boolean, maxLevel: Int, minLevel: Int = 0): List<WordEntity>
 
     @Query("SELECT * FROM words WHERE id = :id")
     suspend fun byId(id: Long): WordEntity?

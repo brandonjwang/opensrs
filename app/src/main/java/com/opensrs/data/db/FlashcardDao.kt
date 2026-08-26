@@ -16,13 +16,13 @@ interface FlashcardDao {
      * Room cannot join across database files, so the caller passes a bounded
      * candidate set of word ids ordered by spoken frequency.
      */
-    @Query("SELECT * FROM cards WHERE wordId IN (:wordIds) AND dueAt <= :now")
+    @Query("SELECT * FROM cards WHERE wordId IN (:wordIds) AND state != 'SUSPENDED' AND dueAt <= :now")
     suspend fun dueAmong(wordIds: List<Long>, now: Long): List<FlashcardStateEntity>
 
     @Query(
         """
         SELECT * FROM cards
-        WHERE state != 'NEW' AND dueAt <= :now
+        WHERE state IN ('LEARNING', 'GRADUATED') AND dueAt <= :now
         ORDER BY dueAt ASC
         LIMIT :limit
         """
@@ -47,7 +47,7 @@ interface FlashcardDao {
     @Query(
         """
         SELECT COUNT(*) FROM cards
-        WHERE state != 'NEW' AND dueAt > :dayStart AND dueAt <= :dayEnd
+        WHERE state IN ('LEARNING', 'GRADUATED') AND dueAt > :dayStart AND dueAt <= :dayEnd
         """
     )
     suspend fun dueCountBetween(dayStart: Long, dayEnd: Long): Int
@@ -70,6 +70,10 @@ interface FlashcardDao {
 
     @Query("SELECT * FROM cards")
     suspend fun all(): List<FlashcardStateEntity>
+
+    /** Word ids the user permanently marked as known; excluded from every queue. */
+    @Query("SELECT wordId FROM cards WHERE state = 'SUSPENDED'")
+    suspend fun skippedIds(): List<Long>
 
     @Query("SELECT MAX(updatedAt) FROM cards")
     suspend fun maxUpdatedAt(): Long?
