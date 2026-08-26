@@ -90,8 +90,11 @@ object BackupCodec {
             cards.add(
                 FlashcardStateEntity(
                     wordId = o.getLong("w"),
-                    state = runCatching { CardState.valueOf(o.getString("s")) }
-                        .getOrDefault(CardState.NEW),
+                    // Unknown state string must FAIL the decode, not fall back to
+                    // NEW: a fallback resurrects suspended words and, via LWW,
+                    // propagates the resurrection to every device. The engine
+                    // aborts the sync when decode fails — the safe direction.
+                    state = CardState.valueOf(o.getString("s")),
                     easeFactor = o.getDouble("e").toFloat(),
                     intervalDays = o.getDouble("i").toFloat(),
                     repetitions = o.getInt("r"),

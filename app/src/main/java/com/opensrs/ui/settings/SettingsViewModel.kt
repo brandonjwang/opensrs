@@ -49,7 +49,15 @@ class SettingsViewModel(
 
     fun setDailyNewLimit(v: Int) = viewModelScope.launch { preferences.setDailyNewLimit(v) }
     fun setDailyReviewLimit(v: Int) = viewModelScope.launch { preferences.setDailyReviewLimit(v) }
-    fun setHskMaxLevel(v: Int) = viewModelScope.launch { preferences.setHskMaxLevel(v) }
+    /** Cap band; keeps the window valid by lowering min when max drops below it. */
+    fun setHskMaxLevel(v: Int) = viewModelScope.launch {
+        val s = preferences.settingsSnapshot()
+        val max = v.coerceIn(0, 7)
+        preferences.setHskMaxLevel(max)
+        if (max != 0 && s.hskMinLevel > max) {
+            preferences.setHskMinLevel(max)
+        }
+    }
     fun setDialectMode(m: DialectMode) = viewModelScope.launch { preferences.setDialectMode(m) }
     fun setRomanization(r: RomanizationPref) = viewModelScope.launch { preferences.setRomanization(r) }
     fun setAutoPlayTts(v: Boolean) = viewModelScope.launch { preferences.setAutoPlayTts(v) }

@@ -98,13 +98,15 @@ class ReviewViewModel(
             advance()
         }
     }
-
     /** Permanently marks the current word as known and moves on. Not undoable. */
     fun markKnown() {
+        val idx = _ui.value.currentIndex
         val state = _ui.value.currentState ?: return
         viewModelScope.launch {
             repository.markKnown(state)
-            advance()
+            // A second tap raced ahead of recomposition: its card was already
+            // advanced past — do not advance twice (that would skip a card).
+            if (_ui.value.currentIndex == idx) advance()
         }
     }
 

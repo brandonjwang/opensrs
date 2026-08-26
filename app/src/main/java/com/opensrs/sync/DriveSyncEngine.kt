@@ -122,14 +122,17 @@ class DriveSyncEngine(
             return@withContext SyncResult.Failed("Download failed: ${e.message}")
         }
         var remotePrefs: com.opensrs.data.local.UserSettings? = null
-        val remoteCards = if (remoteBytes.size > GZIP_MIN_BYTES) {
-            runCatching { BackupCodec.decode(remoteBytes) }
-                .getOrElse { null }
-                ?.also { remotePrefs = it.prefs }
-                ?.cards
-                ?: emptyList()
+        val remoteCards = if (remoteBytes.isEmpty()) {
+            emptyList() // no backup yet (fresh account or just-created shell)
         } else {
-            emptyList()
+            // A non-empty payload we cannot decode (corruption, or a newer app's
+            // formatVersion) must ABORT: treating it as an empty remote would
+            // push local-only state over the other device's newer backup.
+            val decoded = runCatching { BackupCodec.decode(remoteBytes) }.getOrElse {
+                return@withContext SyncResult.Failed("Backup unreadable: ${it.message}")
+            }
+            remotePrefs = decoded.prefs
+            decoded.cards
         }
 
         // -- Merge: per-card LWW on updatedAt ------------------------------------
@@ -165,22 +168,24 @@ class DriveSyncEngine(
             )
         }
 
-        // -- Push post-merge superset ---------------------------------------------
-        val localPrefs = preferences.settings.first()
-        push(service, token, fileId, mergedList, localPrefs)
-        recordSuccess()
-        // Restore remote preferences only when this device has never synced before.
+        // -- Restore remote preferences on first sync of a fresh install ----------
+        // BEFORE pushing: the push must carry the restored prefs, not local
+        // defaults, or an interrupted sync poisons the backup with defaults.
         if (remotePrefs != null && localCards.isEmpty() && pulledNewer > 0) {
             preferences.setDailyNewLimit(remotePrefs.dailyNewLimit)
             preferences.setDailyReviewLimit(remotePrefs.dailyReviewLimit)
             preferences.setHskMaxLevel(remotePrefs.hskMaxLevel)
+            preferences.setHskMinLevel(remotePrefs.hskMinLevel)
             preferences.setDialectMode(remotePrefs.dialectMode)
             preferences.setRomanization(remotePrefs.romanization)
             preferences.setAutoPlayTts(remotePrefs.autoPlayTts)
-            preferences.setHskMinLevel(remotePrefs.hskMinLevel)
             preferences.setShowEnglishFirst(remotePrefs.showEnglishFirst)
         }
 
+        // -- Push post-merge superset ---------------------------------------------
+        val localPrefs = preferences.settings.first()
+        push(service, token, fileId, mergedList, localPrefs)
+        recordSuccess()
         when {
             pulledNewer > 0 && keptLocal == 0 -> SyncResult.Pulled
             pulledNewer > 0 -> SyncResult.Merged
@@ -211,8 +216,6 @@ class DriveSyncEngine(
     private fun deviceName(): String = android.os.Build.MODEL ?: "android-device"
 
     companion object {
-        /** Anything smaller cannot be a valid gzip payload (magic + footer). */
-        const val GZIP_MIN_BYTES = 20
 
         /** Shown to the user when Drive-scope consent is needed. */
         const val CONSENT_MSG = "Approval needed — tap Sync now after granting"

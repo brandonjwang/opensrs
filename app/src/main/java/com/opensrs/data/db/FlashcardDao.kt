@@ -65,7 +65,7 @@ interface FlashcardDao {
     @Query("SELECT COUNT(*) FROM cards WHERE state = 'GRADUATED' AND intervalDays >= 21")
     suspend fun matureCount(): Int
 
-    @Query("SELECT COUNT(*) FROM cards WHERE state != 'NEW' AND dueAt <= :now")
+    @Query("SELECT COUNT(*) FROM cards WHERE state IN ('LEARNING', 'GRADUATED') AND dueAt <= :now")
     fun dueCount(now: Long): Flow<Int>
 
     @Query("SELECT * FROM cards")

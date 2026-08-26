@@ -70,6 +70,21 @@ class DriveServiceTest {
     }
 
     @Test
+    fun `upload patches the parsed file id, not an empty one`() {
+        // The outage's visible symptom: empty parsed id -> PATCH /upload/drive/v3/files/ -> 404.
+        server.enqueue(MockResponse().setBody("""{"kind":"drive#fileList","files":[]}"""))
+        server.enqueue(MockResponse().setBody("""{"id":"realId7"}"""))
+        server.enqueue(MockResponse().setResponseCode(200)) // upload PATCH
+        val id = service.findOrCreate("tok", DriveService.BACKUP_FILE_NAME)
+        service.upload("tok", id, byteArrayOf(1, 2, 3))
+        server.takeRequest() // list query
+        server.takeRequest() // create
+        val upload = server.takeRequest()
+        assertEquals("PATCH", upload.method)
+        assertEquals("/upload/drive/v3/files/realId7", upload.path?.substringBefore('?'))
+    }
+
+    @Test
     fun `download returns payload bytes`() {
         val payload = byteArrayOf(0x1f.toByte(), 0x8b.toByte(), 1, 2, 3)
         server.enqueue(MockResponse().setBody(okio.Buffer().write(payload)))
