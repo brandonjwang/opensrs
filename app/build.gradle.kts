@@ -69,6 +69,8 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
 
     // Room (user state only; dictionary is a raw SQLite asset)
@@ -78,6 +80,10 @@ dependencies {
 
     // Preferences
     implementation(libs.androidx.datastore.preferences)
+
+    // Navigation + background sync
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Google identity + Drive appDataFolder REST (OkHttp) — zero backend
     implementation(libs.play.services.auth)

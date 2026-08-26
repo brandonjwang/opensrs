@@ -1,0 +1,134 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "491809ee8257ea9449bf510153eaadb1",
+    "entities": [
+      {
+        "tableName": "words",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `simplified` TEXT NOT NULL, `traditional` TEXT NOT NULL, `pinyin` TEXT NOT NULL, `jyutping` TEXT NOT NULL, `english` TEXT NOT NULL, `mandarinRank` INTEGER, `cantoneseRank` INTEGER, `examplesJson` TEXT NOT NULL, `hskLevel` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "simplified",
+            "columnName": "simplified",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "traditional",
+            "columnName": "traditional",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinyin",
+            "columnName": "pinyin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jyutping",
+            "columnName": "jyutping",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "english",
+            "columnName": "english",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mandarinRank",
+            "columnName": "mandarinRank",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cantoneseRank",
+            "columnName": "cantoneseRank",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "examplesJson",
+            "columnName": "examplesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hskLevel",
+            "columnName": "hskLevel",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_words_mandarinRank",
+            "unique": false,
+            "columnNames": [
+              "mandarinRank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_words_mandarinRank` ON `${TABLE_NAME}` (`mandarinRank`)"
+          },
+          {
+            "name": "index_words_cantoneseRank",
+            "unique": false,
+            "columnNames": [
+              "cantoneseRank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_words_cantoneseRank` ON `${TABLE_NAME}` (`cantoneseRank`)"
+          },
+          {
+            "name": "index_words_simplified",
+            "unique": false,
+            "columnNames": [
+              "simplified"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_words_simplified` ON `${TABLE_NAME}` (`simplified`)"
+          },
+          {
+            "name": "index_words_traditional",
+            "unique": false,
+            "columnNames": [
+              "traditional"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_words_traditional` ON `${TABLE_NAME}` (`traditional`)"
+          },
+          {
+            "name": "index_words_hskLevel",
+            "unique": false,
+            "columnNames": [
+              "hskLevel"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_words_hskLevel` ON `${TABLE_NAME}` (`hskLevel`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '491809ee8257ea9449bf510153eaadb1')"
+    ]
+  }
+}
