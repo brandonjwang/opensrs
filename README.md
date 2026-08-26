@@ -21,6 +21,27 @@ Cantonese, or both.
   uninstall/reinstall restores everything on first sync
 </details>
 
+## Why not just use Anki?
+
+Anki is great — this app exists because getting it to *do Chinese well* takes
+hours of deck-hunting and add-on plumbing. Open SRS is that work, done:
+
+| | Anki | Open SRS |
+|---|---|---|
+| **First review session** | Download the app, find a shared deck (quality varies), import, configure | Install → tap → reviewing frequency-ordered words in ~30 seconds |
+| **Word order** | Whatever the deck author chose | Every word ranked by how often it's actually *spoken* (SUBTLEX-CH film-subtitle corpus for Mandarin, HKCanCor for Cantonese) — you learn 你好 before 酗酒 without anyone curating it |
+| **Mandarin + Cantonese** | Two separate decks, two pronunciation setups, Cantonese audio is hard to source | One queue; every card speaks in 普通话， 粵語， or both — built in, no add-ons |
+| **Audio** | Configure TTS add-ons or hunt down sound files | Native system TTS with auto-play on reveal |
+| **"I know this word already"** | Bury, suspend, or delete — per card, by hand | One "I already know this word" button, applied forever, synced everywhere |
+| **HSK scoping** | Depends entirely on which deck you downloaded | Built-in: study all bands or skip straight to band 4+ when bands 1–3 are beneath you |
+| **Backup & devices** | AnkiWeb account (or self-hosting a sync server) | Your own Google Drive, invisibly. Uninstall, flash a new ROM, reinstall — sign in and everything comes back |
+| **Accounts & data** | Sync account | None. No server exists; your progress lives on your phone and your Drive |
+
+Honest footnote: Anki does more overall — FSRS scheduling, desktop/web clients,
+a giant ecosystem, any subject you like. If you're already deep into Anki with
+a deck you love, keep it. Open SRS is for people who just want to learn
+*Chinese*, spoken, without setting up a study system first.
+
 ## Stack
 
 | Concern | Choice |
