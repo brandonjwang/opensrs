@@ -279,23 +279,21 @@ private fun ReviewCard(
                     )
                 }
 
-                val primaryScript = if (settings.emphasizeTraditional) word.traditional else word.simplified
-                val secondaryScript = if (settings.emphasizeTraditional) word.simplified else word.traditional
-                Text(
-                    primaryScript,
-                    style = MaterialTheme.typography.displayLarge,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    secondaryScript,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(24.dp))
-
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
+                    val primaryScript = if (settings.emphasizeTraditional) word.traditional else word.simplified
+                    val secondaryScript = if (settings.emphasizeTraditional) word.simplified else word.traditional
+                    Text(
+                        primaryScript,
+                        style = MaterialTheme.typography.displayLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        secondaryScript,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(24.dp))
                     AnimatedVisibility(
                         visible = ui.revealed,
                         enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 4 },

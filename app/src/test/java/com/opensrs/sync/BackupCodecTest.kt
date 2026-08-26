@@ -88,6 +88,9 @@ class BackupCodecTest {
         assertEquals(4, p.hskMaxLevel)
         assertEquals(2, p.hskMinLevel)
         assertEquals(true, p.showEnglishFirst)
+        assertEquals(com.opensrs.data.local.DialectMode.CANTONESE, p.dialectMode)
+        assertEquals(com.opensrs.data.local.RomanizationPref.JYUTPING, p.romanization)
+        assertEquals(false, p.autoPlayTts)
         assertEquals(true, p.emphasizeTraditional)
     }
 
