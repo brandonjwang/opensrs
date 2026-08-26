@@ -14,7 +14,7 @@ dual-dialect TTS, and zero-backend Google Drive backup.
 | User state DB | Room (`srs_state.db`), separate file so backups are exactly its contents |
 | Prefs | Jetpack DataStore |
 | Sync | Google Drive REST v3 `appDataFolder` over OkHttp; WorkManager periodic push/pull |
-| Auth | Google Play Services `GoogleSignIn` + `GoogleAuthUtil` (drive.appdata scope) |
+| Auth | Play Services `AuthorizationClient` (`drive.appdata` scope) |
 | Audio | Native `android.speech.tts.TextToSpeech`, zh-CN + zh-HK engines |
 | Min SDK | 29 |
 
@@ -39,12 +39,12 @@ app/src/main/java/com/opensrs/
   ui/settings/           SettingsScreen + SettingsViewModel
 tools/
   build_words_db.py      Corpus CSV -> validated words.db generator
-  corpus/words.csv       Demo corpus (replace with real SUBTLEX-CH/HKCAC exports)
+  corpus/words.csv       Full dictionary source (see NOTICE for data licenses)
 ```
 
 ## Build
 
-1. **Android Studio** Ladybug+ with SDK 34. Copy `local.properties` (or let Studio generate it).
+1. **Android Studio** Ladybug+ with SDK 35. Copy `local.properties` (or let Studio generate it).
 2. Generate the dictionary asset:
    ```bash
    python3 tools/build_words_db.py
@@ -55,18 +55,19 @@ tools/
    ./gradlew :app:testDebugUnitTest
    ```
 
-### Corpus
+### Corpus & data licenses
 
-Replace `tools/corpus/words.csv` with full corpus exports. Columns:
+`tools/corpus/words.csv` is the full dictionary source: 10,970 entries with
+HSK 3.0 band assignments, spoken-frequency ranks, and romanized example
+sentences. Provenance:
 
-`simplified,traditional,pinyin,jyutping,english,mandarin_rank,cantonese_rank,examples`
+- HSK wordlists: [drkameleon/complete-hsk-vocabulary](https://github.com/drkameleon/complete-hsk-vocabulary) (MIT)
+- Example sentences: [Tatoeba](https://tatoeba.org) via OPUS (CC-BY 2.0 FR)
+- Mandarin ranks: SUBTLEX-CH (Cai & Brysbaert 2010, PLoS ONE)
+- Cantonese ranks: HKCanCor
+- Jyutping: PyCantonese (LSHK scheme) + LSHK lookup fallback
 
-- Ranks: integers from SUBTLEX-CH (spoken subtitle frequencies) and HKCAC /
-  utd-cantonese. Leave blank when absent from a corpus — the queue query then
-  deprioritizes but still includes the word.
-- `examples`: JSON array of `{"zh","py","jp","en"}` objects.
-- The generator assigns ids in ascending effective-spoken-rank order, making
-  `ORDER BY id` a deterministic frequency tiebreak for every DAO query.
+Full attributions and terms live in [NOTICE](NOTICE).
 
 ## Enabling Google Drive sync
 
@@ -82,12 +83,22 @@ One-time console setup, no server required:
    ```bash
    keytool -keystore ~/.android/debug.keystore -list -v -alias androiddebugkey -storepass android
    ```
-5. Done — `DriveAuthManager` uses `GoogleAuthUtil` with that client; no client
-   secret or ID string is embedded in the app.
+5. Done — `DriveAuthManager` mints access tokens via Play Services
+   `AuthorizationClient` with that client; no client secret or ID string is
+   embedded in the app.
 
-> Note on auth stack: Credential Manager's ID-token flow cannot mint Drive-scoped
-> access tokens; `GoogleAuthUtil.getToken` with the `oauth2:` scope prefix is the
-> supported zero-backend path and is what this project uses.
+> **Scope note:** `drive.appdata` is a Google *restricted* OAuth scope. While the
+> Cloud project is in **Testing** mode, only accounts you add as test users can
+> sync (≤100), and they see an unverified-app warning — this falls under Google's
+> personal-use/testing exceptions. A public Play Store release requires completing
+> [OAuth app verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
+> (brand verification, public home page + privacy policy, demo video). No CASA
+> security assessment should be needed: there is no server; data stays on-device
+> and in the user's own hidden Drive folder.
+
+> Auth stack note: Credential Manager's ID-token flow cannot mint Drive-scoped
+> access tokens; the Play Services Authorization API (`AuthorizationClient.authorize`)
+> is the supported zero-backend path and is what this project uses.
 
 ## Sync payload & conflict resolution
 
@@ -106,3 +117,8 @@ One-time console setup, no server required:
   tests in `SrsSchedulerTest` document the contract.
 - **Schema changes**: bump `SrsStateDatabase` version + add migration AND bump
   `BackupCodec.FORMAT_VERSION` with a decode path for old payloads.
+
+## License
+
+Code: [Apache-2.0](LICENSE). Dictionary data: see [NOTICE](NOTICE) for the
+per-source terms (MIT / CC-BY 2.0 FR / academic corpora, attribution given).
