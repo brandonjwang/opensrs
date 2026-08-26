@@ -123,10 +123,21 @@ class SettingsViewModel(
                             }
                         }
                     } catch (e: com.google.android.gms.common.api.ApiException) {
-                        // Never mask this as "canceled" — the status code is the
-                        // whole diagnosis (10 = DEVELOPER_ERROR, usually an
-                        // unregistered package/SHA-1 in the Cloud console).
                         android.util.Log.w(TAG, "resolveConsent failed", e)
+                        if (e.statusCode == com.google.android.gms.common.api.CommonStatusCodes.CANCELED) {
+                            // Deliberate back-out is not a failure.
+                            syncEngine.dismissConsent()
+                            _signIn.value = SignInState(
+                                error = if (preferences.driveAccount.first() != null) {
+                                    DriveSyncEngine.CONSENT_MSG
+                                } else {
+                                    "Sign-in canceled"
+                                },
+                            )
+                            return@launch
+                        }
+                        // Real errors keep their diagnosis (10 = DEVELOPER_ERROR,
+                        // usually an unregistered package/SHA-1).
                         failure = "Google sign-in failed (code ${e.statusCode})"
                     }
                 } else {

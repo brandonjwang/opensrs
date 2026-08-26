@@ -27,6 +27,8 @@ class TtsManager(context: Context) {
         val mandarinReady: Boolean = false,
         val cantoneseReady: Boolean = false,
         val missingVoiceHint: String? = null,
+        /** False until init callbacks have run; UI must not show ✗/warnings before. */
+        val checked: Boolean = false,
     )
 
     private val appContext = context.applicationContext
@@ -66,7 +68,11 @@ class TtsManager(context: Context) {
                 )
             }
             val ready = status == TextToSpeech.SUCCESS && isLanguageAvailable(engine, locale)
-            if (ready) readyLocales = readyLocales + locale
+            // Init callbacks fire on separate binder threads per engine; guard
+            // the read-modify-write or one dialect's readiness can be lost.
+            synchronized(engines) {
+                if (ready) readyLocales = readyLocales + locale
+            }
             publishAvailability(locale, ready)
         }
         synchronized(engines) { engines[locale] = engine }
@@ -82,8 +88,8 @@ class TtsManager(context: Context) {
         scope.launch {
             val current = _availability.value
             _availability.value = when (locale) {
-                Locale.SIMPLIFIED_CHINESE -> current.copy(mandarinReady = ready)
-                else -> current.copy(cantoneseReady = ready)
+                Locale.SIMPLIFIED_CHINESE -> current.copy(mandarinReady = ready, checked = true)
+                else -> current.copy(cantoneseReady = ready, checked = true)
             }.let { next ->
                 if (!next.mandarinReady && !next.cantoneseReady) {
                     next.copy(missingVoiceHint = "No Chinese TTS voice found. Install Google Speech Services.")

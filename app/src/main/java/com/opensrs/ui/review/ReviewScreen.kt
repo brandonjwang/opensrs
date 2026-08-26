@@ -151,8 +151,11 @@ private fun ReviewCard(
                     selected = settings.dialectMode == mode,
                     onClick = { onSetDialect(mode) },
                     label = {
-                        val voiceMissing = (mode == DialectMode.CANTONESE && !availability.cantoneseReady) ||
-                            (mode == DialectMode.MANDARIN && !availability.mandarinReady)
+                        val voiceMissing = availability.checked && when (mode) {
+                            DialectMode.MANDARIN -> !availability.mandarinReady
+                            DialectMode.CANTONESE -> !availability.cantoneseReady
+                            DialectMode.DUAL -> !availability.mandarinReady || !availability.cantoneseReady
+                        }
                         Text(if (voiceMissing) "$label ✗" else label)
                     },
                 )
@@ -187,10 +190,9 @@ private fun ReviewCard(
                 },
             )
         }
-
         // Warn loudly when the selected mode has no voice: Android TTS would
         // otherwise silently fall back to a different language.
-        val voiceMissing = when (settings.dialectMode) {
+        val voiceMissing = availability.checked && when (settings.dialectMode) {
             DialectMode.MANDARIN -> !availability.mandarinReady
             DialectMode.CANTONESE -> !availability.cantoneseReady
             DialectMode.DUAL -> !availability.mandarinReady || !availability.cantoneseReady
