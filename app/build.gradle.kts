@@ -33,6 +33,19 @@ android {
         }
     }
 
+    signingConfigs {
+        // Shared, committed debug keystore so every build (WSL, Windows Studio,
+        // GitHub Actions) signs with the SAME SHA-1. Register that one SHA-1 on
+        // the Cloud console's Android OAuth client and Drive sign-in works from
+        // any build. Debug keystores use well-known credentials by convention.
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false

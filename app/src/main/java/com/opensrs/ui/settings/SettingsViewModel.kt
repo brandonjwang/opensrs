@@ -99,13 +99,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Result of whichever interactive Google flow was launched:
-     * the account picker ([androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult])
-     * or the Drive-scope approval dialog (…StartIntentSenderForResult, data is null there).
-     * A cancellation must NOT retry — otherwise a dismissed approval dialog
-     * re-launches itself forever.
-     */
     fun onConsentResult(data: Intent?, approved: Boolean = true) {
         if (!approved) {
             syncEngine.dismissConsent()
@@ -120,23 +113,33 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 var email: String? = null
+                var failure: String? = null
                 if (data != null) {
-                    runCatching { authManager.resolveConsent(data) }
-                        .getOrNull()
-                        ?.let { account ->
+                    try {
+                        authManager.resolveConsent(data)?.let { account ->
                             if (account.email != null) {
                                 authManager.persistAccount(account)
                                 email = account.email
                             }
                         }
+                    } catch (e: com.google.android.gms.common.api.ApiException) {
+                        // Never mask this as "canceled" — the status code is the
+                        // whole diagnosis (10 = DEVELOPER_ERROR, usually an
+                        // unregistered package/SHA-1 in the Cloud console).
+                        android.util.Log.w(TAG, "resolveConsent failed", e)
+                        failure = "Google sign-in failed (code ${e.statusCode})"
+                    }
+                } else {
+                    failure = "No account returned"
                 }
                 if (email == null && preferences.driveAccount.first() == null) {
-                    _signIn.value = SignInState(error = "Sign-in canceled")
+                    _signIn.value = SignInState(error = failure ?: "Sign-in canceled")
                     return@launch
                 }
                 _signIn.value = SignInState(inFlight = false)
                 syncNow() // consent granted -> token mints silently this time
             } catch (e: Exception) {
+                android.util.Log.w(TAG, "sign-in continuation failed", e)
                 _signIn.value = SignInState(error = e.message ?: "Sign-in failed")
             }
         }
@@ -148,6 +151,7 @@ class SettingsViewModel(
     }
 
     companion object {
+        private const val TAG = "OpenSrsAuth"
         val Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as OpenSrsApp

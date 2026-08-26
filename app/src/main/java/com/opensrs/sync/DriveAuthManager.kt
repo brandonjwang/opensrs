@@ -75,7 +75,18 @@ class DriveAuthManager(
             Identity.getAuthorizationClient(context)
                 .authorize(request)
                 .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
-                .addOnFailureListener { if (cont.isActive) cont.resumeWithException(it) }
+                .addOnFailureListener {
+                    if (!cont.isActive) return@addOnFailureListener
+                    // Surface Google's status code — a bare ApiException has a
+                    // null message. Status 10 (DEVELOPER_ERROR) almost always
+                    // means this APK's package/SHA-1 isn't registered in the
+                    // Cloud console's Android OAuth client.
+                    val api = it as? com.google.android.gms.common.api.ApiException
+                    android.util.Log.w("OpenSrsAuth", "authorize() failed", it)
+                    cont.resumeWithException(
+                        IOException("Google authorization failed (status ${api?.statusCode ?: "?"})"),
+                    )
+                }
         }
 
         val token = result.accessToken
