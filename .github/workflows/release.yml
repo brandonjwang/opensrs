@@ -32,16 +32,23 @@ jobs:
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v4
 
-      # Debug-signed on purpose: an unsigned release APK cannot be installed
-      # for sideloading. Swap to assembleRelease + a signing config from
-      # GitHub Secrets when this graduates past alpha / heads to Play.
-      - name: Build APK
+      # Decode the private release keystore from a CI secret. If the secret is
+      # not set yet, this step is skipped and the build falls back to the
+      # committed debug key (still produces a working, installable APK).
+      - name: Decode release keystore
+        if: ${{ secrets.RELEASE_KEYSTORE_B64 != '' }}
+        run: echo "${{ secrets.RELEASE_KEYSTORE_B64 }}" | base64 -d > release.keystore
+
+      - name: Build release APK
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease
 
       - name: Rename APK with version
-        run: cp app/build/outputs/apk/debug/app-debug.apk "OpenSRS-${GITHUB_REF_NAME}.apk"
+        run: cp app/build/outputs/apk/release/app-release.apk "OpenSRS-${GITHUB_REF_NAME}.apk"
 
       # gh CLI instead of softprops/action-gh-release: idempotent when a
       # release/draft already exists for the tag (softprops aborts with

@@ -34,18 +34,35 @@ android {
     }
 
     signingConfigs {
-        // Shared, committed debug keystore so every build (WSL, Windows Studio,
-        // GitHub Actions) signs with the SAME SHA-1. Register that one SHA-1 on
-        // the Cloud console's Android OAuth client and Drive sign-in works from
-        // any build. Debug keystores use well-known credentials by convention.
+        // Shared, committed debug keystore so local/dev builds (WSL, Windows
+        // Studio) sign with the SAME SHA-1. Register that SHA-1 on the Cloud
+        // console Android OAuth client; Drive sign-in then works from any dev
+        // build. Debug keystores are non-sensitive by design.
         getByName("debug") {
             storeFile = rootProject.file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Release signing uses a PRIVATE keystore injected via CI secrets
+        // (RELEASE_KEYSTORE_B64 -> release.keystore + the RELEASE_KEY_* envs).
+        // Locally (env absent) it falls back to the debug key so assembleRelease
+        // still builds on a developer machine.
+        create("release") {
+            val alias = System.getenv("RELEASE_KEY_ALIAS")
+            if (alias != null) {
+                keyAlias = alias
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: ""
+                storeFile = rootProject.file("release.keystore")
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD") ?: ""
+            } else {
+                storeFile = rootProject.file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
-
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -54,8 +71,18 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Private key in CI; falls back to debug key locally.
+            signingConfig = signingConfigs.getByName("release")
         }
     }
+    // WorkManager 2.6+ initializes via androidx.startup (the merged manifest
+    // uses InitializationProvider with a WorkManagerInitializer meta-data entry,
+    // never a standalone provider). The RemoveWorkManagerInitializer lint is a
+    // known false positive for this setup, so disable it for release builds.
+    lint {
+        disable.add("RemoveWorkManagerInitializer")
+    }
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
