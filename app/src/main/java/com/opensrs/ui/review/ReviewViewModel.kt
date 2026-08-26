@@ -66,14 +66,9 @@ class ReviewViewModel(
         }
     }
 
-    private fun scopeChanged(old: UserSettings, new: UserSettings): Boolean =
-        old.dailyNewLimit != new.dailyNewLimit ||
-            old.dailyReviewLimit != new.dailyReviewLimit ||
-            old.hskMaxLevel != new.hskMaxLevel ||
-            old.hskMinLevel != new.hskMinLevel ||
-            old.prefersCantonese != new.prefersCantonese
 
     private suspend fun startSession(settings: UserSettings) {
+        sessionGeneration++ // invalidates in-flight rate/undo/markKnown UI steps
         lastAnswer = null
         _ui.value = _ui.value.copy(loading = true)
         val queue = repository.buildSession(
@@ -84,13 +79,14 @@ class ReviewViewModel(
             hskMinLevel = settings.hskMinLevel,
         )
         val words = repository.hydrate(queue.map { it.wordId })
+        // No autoPlay() here: revealed is always false for a fresh session,
+        // and autoplay must not fire on every settings-drag rebuild.
         _ui.value = ReviewUiState(
             loading = false,
             queue = queue,
             words = words,
             settings = settings,
         )
-        if (queue.isNotEmpty()) autoPlay()
     }
 
     fun reveal() {
@@ -105,34 +101,48 @@ class ReviewViewModel(
     /** Pre-answer snapshots for one-level undo: (queueIndex, previousState). */
     private var lastAnswer: Pair<Int, FlashcardStateEntity>? = null
 
+    /** Bumped by every session rebuild; in-flight mutations from an older
+     *  generation must not touch the UI of the rebuilt session. */
+    private var sessionGeneration = 0
+
     /** Rating buttons: 0=Again 1=Hard 2=Good 3=Easy. */
     fun rate(rating: Int) {
         val s = _ui.value
         val state = s.currentState ?: return
+        val gen = sessionGeneration
         viewModelScope.launch {
             repository.answer(state, rating)
+            if (gen != sessionGeneration) return@launch // queue rebuilt mid-answer
             lastAnswer = s.currentIndex to state
             _ui.value = _ui.value.copy(canUndo = true)
             advance()
         }
     }
+
     /** Permanently marks the current word as known and moves on. Not undoable. */
     fun markKnown() {
         val idx = _ui.value.currentIndex
         val state = _ui.value.currentState ?: return
+        val gen = sessionGeneration
         viewModelScope.launch {
             repository.markKnown(state)
-            // A second tap raced ahead of recomposition: its card was already
-            // advanced past — do not advance twice (that would skip a card).
-            if (_ui.value.currentIndex == idx) advance()
+            // A second tap raced ahead of recomposition, or a settings rebuild
+            // replaced the queue: do not advance against a stale position.
+            if (gen == sessionGeneration && _ui.value.currentIndex == idx) advance()
         }
     }
 
     /** Reverts the most recent answer and steps back to that card. */
     fun undo() {
         val (idx, prevState) = lastAnswer ?: return
+        val gen = sessionGeneration
         viewModelScope.launch {
             repository.undo(prevState)
+            if (gen != sessionGeneration) {
+                // The DB restore still applies; the UI it belonged to is gone.
+                lastAnswer = null
+                return@launch
+            }
             lastAnswer = null
             _ui.value = _ui.value.copy(canUndo = false)
             _ui.value = _ui.value.copy(
@@ -155,23 +165,23 @@ class ReviewViewModel(
         }
     }
 
-    /** Explicit mode selection: focus Mandarin, Cantonese, or hear both. */
+    /**
+     * Explicit mode selection: focus Mandarin, Cantonese, or hear both.
+     * Persists only — the settings collector applies the new value, so the UI
+     * never fights a queued DataStore emission (rapid-toggle flicker).
+     */
     fun setDialectMode(mode: DialectMode) {
-        val s = _ui.value
-        val settings = s.settings ?: return
+        val settings = _ui.value.settings ?: return
         if (settings.dialectMode == mode) return
-        _ui.value = s.copy(settings = settings.copy(dialectMode = mode))
         viewModelScope.launch { preferences.setDialectMode(mode) }
     }
 
     fun toggleRomanization() {
-        val s = _ui.value
-        val settings = s.settings ?: return
+        val settings = _ui.value.settings ?: return
         val next = when (settings.romanization) {
             RomanizationPref.PINYIN -> RomanizationPref.JYUTPING
             RomanizationPref.JYUTPING -> RomanizationPref.PINYIN
         }
-        _ui.value = s.copy(settings = settings.copy(romanization = next))
         viewModelScope.launch { preferences.setRomanization(next) }
     }
 
@@ -197,6 +207,15 @@ class ReviewViewModel(
     }
 
     companion object {
+
+        /** Settings whose change requires re-deriving the review queue. */
+        internal fun scopeChanged(old: UserSettings, new: UserSettings): Boolean =
+            old.dailyNewLimit != new.dailyNewLimit ||
+                old.dailyReviewLimit != new.dailyReviewLimit ||
+                old.hskMaxLevel != new.hskMaxLevel ||
+                old.hskMinLevel != new.hskMinLevel ||
+                old.prefersCantonese != new.prefersCantonese
+
         val Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as OpenSrsApp
