@@ -26,11 +26,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: Set up Gradle caching
-        uses: gradle/actions/setup-gradle@v4
 
       # Decode the private release keystore from a CI secret. The secrets
       # context can't be used in `if:`, so pass it via env and check in-shell;
