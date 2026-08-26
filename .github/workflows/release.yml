@@ -32,13 +32,17 @@ jobs:
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v4
 
-      # Decode the private release keystore from a CI secret. If the secret is
-      # not set yet, this step is skipped and the build falls back to the
-      # committed debug key (still produces a working, installable APK).
+      # Decode the private release keystore from a CI secret. The secrets
+      # context can't be used in `if:`, so pass it via env and check in-shell;
+      # if unset, no keystore is written and the build falls back to the
+      # committed debug key (still a working, installable APK).
       - name: Decode release keystore
-        if: ${{ secrets.RELEASE_KEYSTORE_B64 != '' }}
-        run: echo "${{ secrets.RELEASE_KEYSTORE_B64 }}" | base64 -d > release.keystore
-
+        env:
+          KEY_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEY_B64" ]; then
+            echo "$KEY_B64" | base64 -d > release.keystore
+          fi
       - name: Build release APK
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
