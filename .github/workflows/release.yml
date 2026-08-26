@@ -26,28 +26,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
 
-      # Decode the private release keystore from a CI secret. The secrets
-      # context can't be used in `if:`, so pass it via env and check in-shell;
-      # if unset, no keystore is written and the build falls back to the
-      # committed debug key (still a working, installable APK).
-      - name: Decode release keystore
-        env:
-          KEY_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
-        run: |
-          if [ -n "$KEY_B64" ]; then
-            echo "$KEY_B64" | base64 -d > release.keystore
-          fi
-      - name: Build release APK
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@v4
+
+      # Debug-signed on purpose: an unsigned release APK cannot be installed
+      # for sideloading. Swap to assembleRelease + a signing config from
+      # GitHub Secrets when this graduates past alpha / heads to Play.
+      - name: Build APK
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
       - name: Rename APK with version
-        run: cp app/build/outputs/apk/release/app-release.apk "OpenSRS-${GITHUB_REF_NAME}.apk"
+        run: cp app/build/outputs/apk/debug/app-debug.apk "OpenSRS-${GITHUB_REF_NAME}.apk"
 
       # gh CLI instead of softprops/action-gh-release: idempotent when a
       # release/draft already exists for the tag (softprops aborts with

@@ -6,6 +6,6 @@ local.properties
 .DS_Store
 /captures
 .kotlin/
-.private keystores (never commit; injected via CI secrets)
+
+# private release keystore (never commit)
 release.keystore
-debug.keystore
