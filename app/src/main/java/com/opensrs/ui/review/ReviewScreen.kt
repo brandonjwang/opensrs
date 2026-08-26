@@ -277,17 +277,19 @@ private fun ReviewCard(
                             val primary = when (settings.romanization) {
                                 RomanizationPref.PINYIN -> word.pinyin
                                 RomanizationPref.JYUTPING -> word.jyutping
-                            }
+                            }.trim().ifEmpty { word.pinyin.trim() }
                             val secondary = when (settings.romanization) {
                                 RomanizationPref.PINYIN -> word.jyutping
                                 RomanizationPref.JYUTPING -> word.pinyin
-                            }
+                            }.trim()
                             Text(primary, style = MaterialTheme.typography.titleLarge)
-                            Text(
-                                secondary,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            if (secondary.isNotEmpty()) {
+                                Text(
+                                    secondary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             Spacer(Modifier.height(12.dp))
                             Text(word.english, textAlign = TextAlign.Center)
 

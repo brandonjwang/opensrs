@@ -112,7 +112,7 @@ fun OpenSrsAppUi() {
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.REVIEW) { ReviewScreen() }
-            composable(Routes.BROWSE) { BrowseScreen(container.wordDao) }
+            composable(Routes.BROWSE) { BrowseScreen(container.searchIndex) }
             composable(Routes.STATS) { StatsScreen(container.statsRepository) }
             composable(Routes.SETTINGS) { SettingsScreen() }
         }

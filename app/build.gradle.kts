@@ -93,6 +93,7 @@ dependencies {
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
+    testImplementation(libs.org.json)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)

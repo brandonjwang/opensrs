@@ -10,6 +10,7 @@ import com.opensrs.data.repo.StudyRepository
 import com.opensrs.srs.SrsScheduler
 import com.opensrs.sync.DriveSyncEngine
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
@@ -39,6 +40,11 @@ class AppContainer(app: OpenSrsApp) {
     }
 
     val tts: TtsManager by lazy { TtsManager(app) }
+
+    /** In-memory normalized search index; built once, off the main thread. */
+    val searchIndex: kotlinx.coroutines.Deferred<com.opensrs.data.db.WordSearchIndex> by lazy {
+        appScope.async { com.opensrs.data.db.WordSearchIndex.build(wordDao) }
+    }
 
     val syncEngine: DriveSyncEngine by lazy {
         DriveSyncEngine(

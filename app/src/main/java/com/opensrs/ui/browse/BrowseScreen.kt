@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
  * empty query shows the highest-frequency words for context.
  */
 @Composable
-fun BrowseScreen(wordDao: WordDao) {
+fun BrowseScreen(searchIndex: kotlinx.coroutines.Deferred<com.opensrs.data.db.WordSearchIndex>) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<WordEntity>>(emptyList()) }
     val scope = rememberCoroutineScope()
@@ -50,12 +50,14 @@ fun BrowseScreen(wordDao: WordDao) {
 
     // Initial listing; subsequent searches are debounced per keystroke below.
     LaunchedEffect(Unit) {
-        results = wordDao.topBySpokenFrequency(window = 50, preferCantonese = false, maxLevel = 0)
+        val index = searchIndex.await()
+        results = index.top(50)
     }
     LaunchedEffect(query) {
         if (query.isEmpty()) return@LaunchedEffect
         delay(250) // debounce
-        results = wordDao.search(query.trim())
+        val index = searchIndex.await() // instant once built; suspends only on first entry
+        results = index.search(query.trim())
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
@@ -115,8 +117,12 @@ private fun WordRow(word: WordEntity) {
                         )
                     }
                 }
+                val roman = buildString {
+                    append(word.pinyin.trim())
+                    if (word.jyutping.isNotBlank()) append(" · ${word.jyutping.trim()}")
+                }
                 Text(
-                    "${word.pinyin} · ${word.jyutping}",
+                    roman,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
                 )

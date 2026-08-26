@@ -28,8 +28,12 @@ import sys
 from pathlib import Path
 
 SCHEMA = """
+-- Mirrors app/schemas/com.opensrs.data.db.WordsDatabase/1.json verbatim.
+-- Room validates the pre-packaged DB with exact TableInfo equality:
+-- column nullability, defaults (entity declares NONE), and index names
+-- must all match, or startup crashes with "invalid schema".
 CREATE TABLE IF NOT EXISTS words (
-    id              INTEGER PRIMARY KEY,
+    id              INTEGER NOT NULL,
     simplified      TEXT NOT NULL,
     traditional     TEXT NOT NULL,
     pinyin          TEXT NOT NULL,
@@ -37,15 +41,29 @@ CREATE TABLE IF NOT EXISTS words (
     english         TEXT NOT NULL,
     mandarinRank    INTEGER,
     cantoneseRank   INTEGER,
-    examplesJson    TEXT NOT NULL DEFAULT '[]',
-    hskLevel        INTEGER NOT NULL DEFAULT 0
+    examplesJson    TEXT NOT NULL,
+    hskLevel        INTEGER NOT NULL,
+    PRIMARY KEY(id)
 );
-CREATE INDEX IF NOT EXISTS idx_words_mandarin_rank  ON words(mandarinRank);
-CREATE INDEX IF NOT EXISTS idx_words_cantonese_rank ON words(cantoneseRank);
-CREATE INDEX IF NOT EXISTS idx_words_simplified     ON words(simplified);
-CREATE INDEX IF NOT EXISTS idx_words_traditional    ON words(traditional);
-CREATE INDEX IF NOT EXISTS idx_words_hsk_level      ON words(hskLevel);
+CREATE INDEX IF NOT EXISTS `index_words_hskLevel`      ON words(hskLevel);
+CREATE INDEX IF NOT EXISTS `index_words_mandarinRank`  ON words(mandarinRank);
+CREATE INDEX IF NOT EXISTS `index_words_cantoneseRank` ON words(cantoneseRank);
+CREATE INDEX IF NOT EXISTS `index_words_simplified`    ON words(simplified);
+CREATE INDEX IF NOT EXISTS `index_words_traditional`   ON words(traditional);
 """
+
+def _guard_jyutping(line: int, simp: str, jp: str) -> str:
+    """Blank jyutping that does not cover every character of the headword.
+
+    The upstream romanizer occasionally truncates multi-character entries
+    (e.g. 再見 -> "zoi3", 空調 -> "hung1"). Partial pronunciation is worse
+    than none: a learner reading it would learn wrong syllables. Tone-digit
+    count is a reliable syllable proxy for this corpus's format.
+    """
+    n_syllables = sum(ch.isdigit() for ch in jp)
+    if len(simp) >= 2 and n_syllables < len(simp):
+        return ""
+    return jp
 
 
 def validate(rows: list[dict]) -> list[dict]:
@@ -88,7 +106,7 @@ def validate(rows: list[dict]) -> list[dict]:
                 "simplified": simp,
                 "traditional": trad,
                 "pinyin": r["pinyin"].strip(),
-                "jyutping": r["jyutping"].strip(),
+                "jyutping": _guard_jyutping(i, simp, r["jyutping"].strip()),
                 "english": r["english"].strip(),
                 "mandarinRank": mr,
                 "cantoneseRank": cr,

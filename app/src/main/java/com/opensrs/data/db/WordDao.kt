@@ -34,6 +34,10 @@ interface WordDao {
     @Query("SELECT COUNT(*) FROM words WHERE hskLevel > 0 AND (:maxLevel = 0 OR hskLevel <= :maxLevel)")
     suspend fun countInLevels(maxLevel: Int): Int
 
+    /** Full dictionary scan source for the in-memory [WordSearchIndex]. */
+    @Query("SELECT * FROM words")
+    suspend fun allForSearch(): List<WordEntity>
+
     @Query(
         """
         SELECT * FROM words
