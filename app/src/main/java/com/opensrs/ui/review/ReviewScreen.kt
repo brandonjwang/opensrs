@@ -7,7 +7,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.GTranslate
@@ -38,9 +39,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,6 +57,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.opensrs.audio.TtsManager
 import com.opensrs.data.db.CardState
 import com.opensrs.data.local.DialectMode
 import com.opensrs.data.local.RomanizationPref
@@ -83,10 +86,10 @@ fun ReviewScreen(viewModel: ReviewViewModel = viewModel(factory = ReviewViewMode
             )
             ReviewCard(
                 ui = ui,
-                availabilityHint = availability.missingVoiceHint,
+                availability = availability,
                 onReveal = viewModel::reveal,
                 onRate = viewModel::rate,
-                onToggleDialect = viewModel::toggleDialect,
+                onSetDialect = viewModel::setDialectMode,
                 onToggleRomanization = viewModel::toggleRomanization,
                 onReplay = viewModel::replayAudio,
                 onUndo = viewModel::undo,
@@ -116,10 +119,10 @@ private fun SessionProgressBar(total: Int, done: Int, modifier: Modifier = Modif
 @Composable
 private fun ReviewCard(
     ui: ReviewUiState,
-    availabilityHint: String?,
+    availability: TtsManager.Availability,
     onReveal: () -> Unit,
     onRate: (Int) -> Unit,
-    onToggleDialect: () -> Unit,
+    onSetDialect: (DialectMode) -> Unit,
     onToggleRomanization: () -> Unit,
     onReplay: () -> Unit,
     onUndo: () -> Unit,
@@ -135,26 +138,25 @@ private fun ReviewCard(
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         // -- Control chips -------------------------------------------------------
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(
-                onClick = onToggleDialect,
-                label = {
-                    Text(
-                        when (settings.dialectMode) {
-                            DialectMode.MANDARIN -> "普通话"
-                            DialectMode.CANTONESE -> "粵語"
-                            DialectMode.DUAL -> "Dual"
-                        },
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.AutoAwesome, null,
-                        modifier = Modifier.size(AssistChipDefaults.IconSize),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                },
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            listOf(
+                "普通话" to DialectMode.MANDARIN,
+                "粵語" to DialectMode.CANTONESE,
+                "Dual" to DialectMode.DUAL,
+            ).forEach { (label, mode) ->
+                FilterChip(
+                    selected = settings.dialectMode == mode,
+                    onClick = { onSetDialect(mode) },
+                    label = {
+                        val voiceMissing = (mode == DialectMode.CANTONESE && !availability.cantoneseReady) ||
+                            (mode == DialectMode.MANDARIN && !availability.mandarinReady)
+                        Text(if (voiceMissing) "$label ✗" else label)
+                    },
+                )
+            }
             AssistChip(
                 onClick = onToggleRomanization,
                 label = {
@@ -186,8 +188,27 @@ private fun ReviewCard(
             )
         }
 
-        availabilityHint?.let {
-            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+        // Warn loudly when the selected mode has no voice: Android TTS would
+        // otherwise silently fall back to a different language.
+        val voiceMissing = when (settings.dialectMode) {
+            DialectMode.MANDARIN -> !availability.mandarinReady
+            DialectMode.CANTONESE -> !availability.cantoneseReady
+            DialectMode.DUAL -> !availability.mandarinReady || !availability.cantoneseReady
+        }
+        if (voiceMissing) {
+            Text(
+                when (settings.dialectMode) {
+                    DialectMode.MANDARIN ->
+                        "No Mandarin voice found — install Google Speech Services and set zh-CN."
+                    DialectMode.CANTONESE ->
+                        "No Cantonese voice found — audio is suppressed rather than speaking Mandarin. " +
+                            "Install a Chinese (Hong Kong) voice in your TTS app (e.g. Google Speech Services)."
+                    DialectMode.DUAL ->
+                        "Missing a voice for one dialect — install Chinese voices in your TTS app."
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
 
         // -- Flashcard -----------------------------------------------------------

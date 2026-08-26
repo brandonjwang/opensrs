@@ -41,6 +41,10 @@ class TtsManager(context: Context) {
      */
     private val engines = mutableMapOf<Locale, TextToSpeech>()
 
+    /** Locales whose init callback confirmed a working voice. */
+    @Volatile
+    private var readyLocales: Set<Locale> = emptySet()
+
     private val utteranceCounter = AtomicInteger(0)
 
     init {
@@ -62,6 +66,7 @@ class TtsManager(context: Context) {
                 )
             }
             val ready = status == TextToSpeech.SUCCESS && isLanguageAvailable(engine, locale)
+            if (ready) readyLocales = readyLocales + locale
             publishAvailability(locale, ready)
         }
         synchronized(engines) { engines[locale] = engine }
@@ -126,6 +131,10 @@ class TtsManager(context: Context) {
 
     private fun speak(text: String, locale: Locale) {
         val tts = synchronized(engines) { engines[locale] } ?: return
+        // Never let an unready engine "speak": Android TTS silently falls back
+        // to another installed voice, so selecting Cantonese without a zh-HK
+        // voice would play Mandarin. Silence + UI warning beats wrong audio.
+        if (locale !in readyLocales) return
         val utteranceId = "oc-${utteranceCounter.incrementAndGet()}"
         // QUEUE keeps DUAL sequential; identical text needs distinct ids to not collapse.
         tts.speak(text, TextToSpeech.QUEUE_ADD, null, utteranceId)

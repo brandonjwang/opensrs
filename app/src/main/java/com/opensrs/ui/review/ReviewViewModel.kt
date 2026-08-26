@@ -137,17 +137,13 @@ class ReviewViewModel(
         }
     }
 
-    fun toggleDialect() {
+    /** Explicit mode selection: focus Mandarin, Cantonese, or hear both. */
+    fun setDialectMode(mode: DialectMode) {
         val s = _ui.value
         val settings = s.settings ?: return
-        val nextMode = when (settings.dialectMode) {
-            DialectMode.MANDARIN -> DialectMode.CANTONESE
-            DialectMode.CANTONESE -> DialectMode.DUAL
-            DialectMode.DUAL -> DialectMode.MANDARIN
-        }
-        val updated = settings.copy(dialectMode = nextMode)
-        _ui.value = s.copy(settings = updated)
-        viewModelScope.launch { preferences.setDialectMode(nextMode) }
+        if (settings.dialectMode == mode) return
+        _ui.value = s.copy(settings = settings.copy(dialectMode = mode))
+        viewModelScope.launch { preferences.setDialectMode(mode) }
     }
 
     fun toggleRomanization() {
