@@ -1,8 +1,25 @@
-# Open SRS — Intermediate Chinese SRS (Mandarin + Cantonese)
+# Open SRS
 
-Production-grade Android app for intermediate Chinese learners: spoken-frequency
-dictionary (SUBTLEX-CH / HKCAC-utd), offline SM-2 spaced repetition, native
-dual-dialect TTS, and zero-backend Google Drive backup.
+SRS (spaced repetition) for Chinese — learn 普通话 and 粵語 words the Anki way:
+cards come back right before you'd forget them.
+
+**Open SRS** is a free Android flashcard app for intermediate learners. Pick an
+HSK band, review a few cards a day, and your progress backs itself up to your
+own Google Drive — no account with us, no server, no ads. Words are ordered by
+how often people actually say them, and every card speaks aloud in Mandarin,
+Cantonese, or both.
+
+<details>
+<summary>Highlights</summary>
+
+- Offline SM-2 spaced repetition (Again / Hard / Good / Easy)
+- 10,970-word spoken-frequency dictionary ordered by SUBTLEX-CH / HKCanCor ranks
+- HSK 3.0 bands: study everything, or skip straight to band 4+
+- Skip words you already know, permanently
+- Dual-dialect text-to-speech (zh-CN + zh-HK), auto-play on reveal
+- Automatic backup to a hidden folder in your own Google Drive;
+  uninstall/reinstall restores everything on first sync
+</details>
 
 ## Stack
 
