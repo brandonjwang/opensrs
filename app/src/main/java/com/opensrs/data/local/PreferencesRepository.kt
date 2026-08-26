@@ -29,6 +29,8 @@ data class UserSettings(
     val romanization: RomanizationPref,
     val autoPlayTts: Boolean,
     val showEnglishFirst: Boolean,
+    /** Render traditional characters larger than simplified (swap hierarchy). */
+    val emphasizeTraditional: Boolean,
 )
 
 /** Default until changed; used for new-card frequency ordering and TTS order. */
@@ -43,8 +45,9 @@ class PreferencesRepository(private val context: Context) {
         val HSK_MIN_LEVEL = intPreferencesKey("hsk_min_level")
         val DIALECT = stringPreferencesKey("dialect_mode")
         val ROMANIZATION = stringPreferencesKey("romanization_pref")
-        val AUTO_TTS = booleanPreferencesKey("auto_play_tts")
         val ENGLISH_FIRST = booleanPreferencesKey("show_english_first")
+        val TRAD_FIRST = booleanPreferencesKey("emphasize_traditional")
+        val AUTO_TTS = booleanPreferencesKey("auto_play_tts")
         val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
         val ACCOUNT = stringPreferencesKey("drive_account")
         val BACKUP_UPDATED = longPreferencesKey("drive_backup_updated_at")
@@ -55,11 +58,12 @@ class PreferencesRepository(private val context: Context) {
             dailyNewLimit = p[Keys.DAILY_NEW] ?: 10,
             dailyReviewLimit = p[Keys.DAILY_REVIEWS] ?: 100,
             hskMaxLevel = p[Keys.HSK_MAX_LEVEL] ?: 3,
+            hskMinLevel = p[Keys.HSK_MIN_LEVEL] ?: 0,
             dialectMode = enumOrDefault(p[Keys.DIALECT], DialectMode.DUAL),
             romanization = enumOrDefault(p[Keys.ROMANIZATION], RomanizationPref.PINYIN),
-            hskMinLevel = p[Keys.HSK_MIN_LEVEL] ?: 0,
             autoPlayTts = p[Keys.AUTO_TTS] ?: true,
             showEnglishFirst = p[Keys.ENGLISH_FIRST] ?: false,
+            emphasizeTraditional = p[Keys.TRAD_FIRST] ?: false,
         )
     }
 
@@ -78,6 +82,7 @@ class PreferencesRepository(private val context: Context) {
     suspend fun setHskMinLevel(v: Int) = setInt(Keys.HSK_MIN_LEVEL, v.coerceIn(0, 7))
     suspend fun setAutoPlayTts(v: Boolean) = setBool(Keys.AUTO_TTS, v)
     suspend fun setShowEnglishFirst(v: Boolean) = setBool(Keys.ENGLISH_FIRST, v)
+    suspend fun setEmphasizeTraditional(v: Boolean) = setBool(Keys.TRAD_FIRST, v)
     suspend fun setSyncMetadata(account: String?, lastSyncAt: Long?, backupUpdatedAt: Long?) {
         context.dataStore.edit { p ->
             account?.let { p[Keys.ACCOUNT] = it }

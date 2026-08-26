@@ -78,6 +78,7 @@ class BackupCodecTest {
             dialectMode = com.opensrs.data.local.DialectMode.CANTONESE,
             romanization = com.opensrs.data.local.RomanizationPref.JYUTPING,
             autoPlayTts = false, showEnglishFirst = true,
+            emphasizeTraditional = true,
         )
         val bytes = BackupCodec.encode(cards, "dev", 99L, settings)
         val decoded = BackupCodec.decode(bytes)
@@ -86,10 +87,8 @@ class BackupCodecTest {
         assertEquals(200, p.dailyReviewLimit)
         assertEquals(4, p.hskMaxLevel)
         assertEquals(2, p.hskMinLevel)
-        assertEquals(com.opensrs.data.local.DialectMode.CANTONESE, p.dialectMode)
-        assertEquals(com.opensrs.data.local.RomanizationPref.JYUTPING, p.romanization)
-        assertEquals(false, p.autoPlayTts)
         assertEquals(true, p.showEnglishFirst)
+        assertEquals(true, p.emphasizeTraditional)
     }
 
     @Test

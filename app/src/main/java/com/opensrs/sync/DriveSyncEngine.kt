@@ -180,6 +180,7 @@ class DriveSyncEngine(
             preferences.setRomanization(remotePrefs.romanization)
             preferences.setAutoPlayTts(remotePrefs.autoPlayTts)
             preferences.setShowEnglishFirst(remotePrefs.showEnglishFirst)
+            preferences.setEmphasizeTraditional(remotePrefs.emphasizeTraditional)
         }
 
         // -- Push post-merge superset ---------------------------------------------

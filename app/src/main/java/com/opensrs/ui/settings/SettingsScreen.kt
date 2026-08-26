@@ -185,6 +185,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
             checked = settings!!.autoPlayTts,
             onChange = { viewModel.setAutoPlayTts(it) },
         )
+        ToggleRow(
+            label = "Show traditional larger than simplified",
+            checked = settings!!.emphasizeTraditional,
+            onChange = { viewModel.setEmphasizeTraditional(it) },
+        )
 
         HorizontalDivider()
 

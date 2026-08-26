@@ -42,7 +42,10 @@ import kotlinx.coroutines.launch
  * empty query shows the highest-frequency words for context.
  */
 @Composable
-fun BrowseScreen(searchIndex: kotlinx.coroutines.Deferred<com.opensrs.data.db.WordSearchIndex>) {
+fun BrowseScreen(
+    searchIndex: kotlinx.coroutines.Deferred<com.opensrs.data.db.WordSearchIndex>,
+    emphasizeTraditional: Boolean,
+) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<WordEntity>>(emptyList()) }
     val scope = rememberCoroutineScope()
@@ -85,14 +88,14 @@ fun BrowseScreen(searchIndex: kotlinx.coroutines.Deferred<com.opensrs.data.db.Wo
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(results, key = { it.id }) { word ->
-                WordRow(word)
+                WordRow(word, emphasizeTraditional)
             }
         }
     }
 }
 
 @Composable
-private fun WordRow(word: WordEntity) {
+private fun WordRow(word: WordEntity, emphasizeTraditional: Boolean) {
     Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -100,13 +103,23 @@ private fun WordRow(word: WordEntity) {
         ) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(word.simplified, style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        word.traditional,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (emphasizeTraditional) {
+                        Text(word.traditional, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            word.simplified,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(word.simplified, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            word.traditional,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Spacer(Modifier.size(8.dp))
                     Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primaryContainer) {
                         Text(

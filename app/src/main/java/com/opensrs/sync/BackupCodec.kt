@@ -70,6 +70,7 @@ object BackupCodec {
                     .put("dialect", it.dialectMode.name)
                     .put("roman", it.romanization.name)
                     .put("autoTts", it.autoPlayTts)
+                    .put("tradFirst", it.emphasizeTraditional)
                     .put("englishFirst", it.showEnglishFirst),
             )
         }
@@ -118,6 +119,7 @@ object BackupCodec {
                     romanization = enumOr(p.optString("roman"), RomanizationPref.PINYIN),
                     autoPlayTts = p.optBoolean("autoTts", true),
                     showEnglishFirst = p.optBoolean("englishFirst", false),
+                    emphasizeTraditional = p.optBoolean("tradFirst", false),
                 )
             }
         }

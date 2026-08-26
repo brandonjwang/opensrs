@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -68,6 +69,8 @@ fun OpenSrsAppUi() {
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route ?: Routes.REVIEW
     val container = (androidx.compose.ui.platform.LocalContext.current.applicationContext as OpenSrsApp).container
+    val settings by container.preferences.settings.collectAsState(initial = null)
+    val emphasizeTraditional = settings?.emphasizeTraditional ?: false
 
     Scaffold(
         topBar = {
@@ -112,7 +115,7 @@ fun OpenSrsAppUi() {
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.REVIEW) { ReviewScreen() }
-            composable(Routes.BROWSE) { BrowseScreen(container.searchIndex) }
+            composable(Routes.BROWSE) { BrowseScreen(container.searchIndex, emphasizeTraditional) }
             composable(Routes.STATS) { StatsScreen(container.statsRepository) }
             composable(Routes.SETTINGS) { SettingsScreen() }
         }

@@ -61,6 +61,7 @@ class SettingsViewModel(
     fun setDialectMode(m: DialectMode) = viewModelScope.launch { preferences.setDialectMode(m) }
     fun setRomanization(r: RomanizationPref) = viewModelScope.launch { preferences.setRomanization(r) }
     fun setAutoPlayTts(v: Boolean) = viewModelScope.launch { preferences.setAutoPlayTts(v) }
+    fun setEmphasizeTraditional(v: Boolean) = viewModelScope.launch { preferences.setEmphasizeTraditional(v) }
 
     /** Manual "Sync now" button. */
     fun syncNow() = viewModelScope.launch { syncEngine.syncNow() }
