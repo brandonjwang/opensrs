@@ -49,6 +49,20 @@ class DriveSyncEngine(
     private val _status = MutableStateFlow(SyncStatus())
     val status: StateFlow<SyncStatus> = _status
 
+    /**
+     * Non-null when the last sync aborted because Google needs interactive
+     * Drive-scope consent. The UI must start this IntentSender via
+     * [androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult];
+     * after the user approves, retrying sync succeeds silently.
+     */
+    private val _consentRequired = MutableStateFlow<android.content.IntentSender?>(null)
+    val consentRequired: StateFlow<android.content.IntentSender?> = _consentRequired
+
+    /** User dismissed the approval dialog; stop re-surfacing it until next attempt. */
+    fun dismissConsent() {
+        _consentRequired.value = null
+    }
+
     /** Serializes syncs; a WorkManager run and a manual pull never interleave. */
     private val syncMutex = Mutex()
 
@@ -76,10 +90,12 @@ class DriveSyncEngine(
         val result = runCatching { doSync() }.getOrElse { e ->
             SyncResult.Failed(e.message ?: e.javaClass.simpleName)
         }
+        if (result !is SyncResult.Failed) {
+            _consentRequired.value = null // consent granted (or not needed anymore)
+        }
         val message = when (result) {
-            is SyncResult.Pushed, is SyncResult.Pulled, is SyncResult.Merged -> "Synced"
-            is SyncResult.InSync -> "Up to date"
-            is SyncResult.Failed -> "Failed: ${result.reason}"
+            is SyncResult.Failed -> result.reason
+            else -> "Sync complete"
         }
         _status.value = _status.value.copy(running = false, lastMessage = message)
         result
@@ -89,7 +105,8 @@ class DriveSyncEngine(
         val token = try {
             tokenProvider()
         } catch (e: DriveAuthManager.ConsentRequired) {
-            return@withContext SyncResult.Failed("Re-authentication required")
+            _consentRequired.value = e.pendingIntent.intentSender
+            return@withContext SyncResult.Failed(CONSENT_MSG)
         } catch (e: IllegalStateException) {
             return@withContext SyncResult.Failed(e.message ?: "Not signed in")
         }
@@ -193,5 +210,8 @@ class DriveSyncEngine(
     companion object {
         /** Anything smaller cannot be a valid gzip payload (magic + footer). */
         const val GZIP_MIN_BYTES = 20
+
+        /** Shown to the user when Drive-scope consent is needed. */
+        const val CONSENT_MSG = "Approval needed — tap Sync now after granting"
     }
 }

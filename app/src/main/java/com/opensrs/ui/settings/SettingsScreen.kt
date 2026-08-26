@@ -58,10 +58,27 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
         viewModel.onConsentResult(result.data)
     }
 
+    // Drive-scope approval dialog: GMS hands it over as an IntentSender.
+    // The callback's data is null — the ViewModel falls back to the stored
+    // account and retries the token mint after approval.
+    val consentSender by viewModel.consentRequired.collectAsState()
+    val intentSenderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        viewModel.onConsentResult(result.data)
+    }
+
     // When the ViewModel emits a one-shot consent intent, launch it exactly once.
     val consentIntent = signIn.consentIntent
     androidx.compose.runtime.LaunchedEffect(consentIntent) {
         consentIntent?.let { consentLauncher.launch(it) }
+    }
+    androidx.compose.runtime.LaunchedEffect(consentSender) {
+        consentSender?.let { sender ->
+            intentSenderLauncher.launch(
+                androidx.activity.result.IntentSenderRequest.Builder(sender).build(),
+            )
+        }
     }
 
     if (settings == null) {

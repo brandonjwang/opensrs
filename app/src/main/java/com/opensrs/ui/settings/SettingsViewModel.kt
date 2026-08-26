@@ -1,6 +1,7 @@
 package com.opensrs.ui.settings
 
 import android.content.Intent
+import android.content.IntentSender
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -16,6 +17,7 @@ import com.opensrs.sync.DriveSyncEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -35,6 +37,9 @@ class SettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val syncStatus: StateFlow<DriveSyncEngine.SyncStatus> = syncEngine.status
+
+    /** Non-null while Google's Drive-scope approval dialog should be shown. */
+    val consentRequired: StateFlow<IntentSender?> = syncEngine.consentRequired
 
     val account: StateFlow<String?> = preferences.driveAccount
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -68,6 +73,8 @@ class SettingsViewModel(
                 }
                 authManager.persistAccount(account)
                 _signIn.value = SignInState(inFlight = false)
+                // May surface [consentRequired]; the screen launches it and
+                // routes the approval back through [onConsentResult].
                 syncNow()
             } catch (e: Exception) {
                 _signIn.value = SignInState(error = e.message ?: "Sign-in failed")
@@ -75,18 +82,32 @@ class SettingsViewModel(
         }
     }
 
-    /** Feed the ActivityResult from launching the account-picker intent here. */
+    /**
+     * Result of whichever interactive Google flow was launched:
+     * the account picker ([androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult])
+     * or the Drive-scope approval dialog (…StartIntentSenderForResult, data is null there).
+     * Either way, the next step is a fresh [syncNow] attempt.
+     */
     fun onConsentResult(data: Intent?) {
         viewModelScope.launch {
             try {
-                val account = authManager.resolveConsent(data)
-                if (account?.email != null) {
-                    authManager.persistAccount(account)
-                    _signIn.value = SignInState(inFlight = false)
-                    syncNow()
-                } else {
-                    _signIn.value = SignInState(error = "Sign-in canceled")
+                var email: String? = null
+                if (data != null) {
+                    runCatching { authManager.resolveConsent(data) }
+                        .getOrNull()
+                        ?.let { account ->
+                            if (account.email != null) {
+                                authManager.persistAccount(account)
+                                email = account.email
+                            }
+                        }
                 }
+                if (email == null && preferences.driveAccount.first() == null) {
+                    _signIn.value = SignInState(error = "Sign-in canceled")
+                    return@launch
+                }
+                _signIn.value = SignInState(inFlight = false)
+                syncNow() // consent granted -> token mints silently this time
             } catch (e: Exception) {
                 _signIn.value = SignInState(error = e.message ?: "Sign-in failed")
             }
