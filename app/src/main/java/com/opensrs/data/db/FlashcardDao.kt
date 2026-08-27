@@ -12,12 +12,13 @@ interface FlashcardDao {
     suspend fun byWord(wordId: Long): FlashcardStateEntity?
 
     /**
-     * Due queue joined against the static dictionary for frequency ordering.
-     * Room cannot join across database files, so the caller passes a bounded
-     * candidate set of word ids ordered by spoken frequency.
+     * All non-suspended states for the given word ids, regardless of due date.
+     * Used to classify candidates as NEW vs. already-studied when assembling a
+     * session — a card answered "Easy" has a future due date and must NOT be
+     * mistaken for NEW just because it is not currently due.
      */
-    @Query("SELECT * FROM cards WHERE wordId IN (:wordIds) AND state != 'SUSPENDED' AND dueAt <= :now")
-    suspend fun dueAmong(wordIds: List<Long>, now: Long): List<FlashcardStateEntity>
+    @Query("SELECT * FROM cards WHERE wordId IN (:wordIds) AND state != 'SUSPENDED'")
+    suspend fun statesFor(wordIds: List<Long>): List<FlashcardStateEntity>
 
     @Query(
         """

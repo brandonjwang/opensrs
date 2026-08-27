@@ -51,7 +51,7 @@ class StudyRepository(
         val candidates = wordDao
             .topBySpokenFrequency(window, preferCantonese, hskMaxLevel, hskMinLevel)
             .filter { it.id !in skipped }
-        val statesById = cardDao.dueAmong(candidates.map { it.id }, now)
+        val statesById = cardDao.statesFor(candidates.map { it.id })
             .associateBy { it.wordId }
 
         val newSlots = (newLimit - dueKnown.count { it.state == CardState.NEW }).coerceAtLeast(0)
